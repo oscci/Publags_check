@@ -52,6 +52,11 @@ thisjournal<-'jhe_76p'
 thisjournal<-'misy_122p'
 thisjournal<-'wcmc_170p'
 thisjournal<-'js_58p'
+thisjournal<-'cin_220p'
+thisjournal<-'scn_94p'
+thisjournal<-'mpe_200p'
+thisjournal<-'dm_56p'
+thisjournal<-'sp_72p'
 jfile<-paste0('H_articles_',thisjournal,'.csv')
 thisfile<-here('Hindawi_results',jfile)
 mydf<- read.csv(thisfile)
@@ -98,8 +103,13 @@ if(length(w)==0){
 #convert to R date format
 #NB if it was opened in xls then format may have changed! Need to check
 datecol<-which(colnames(mydf)=='received')
+#Need to test date format as it varies by journal.
+testdate<-mydf[1,datecol]
+dateformat<-'%d-%b-%y'
+if(length(testdate)==1)
+{dateformat<-'%d %b %Y'} #for now we assume date format is either %d-%b-%y or %d %b %Y : in which case we can detect which one by the length.
 for (d in datecol:(datecol+3)){
-  mydf[,d]<-as.Date(mydf[,d],'%d-%b-%y')
+  mydf[,d]<-as.Date(mydf[,d],dateformat)
 }
 
 mydf$days_rec_rev<-as.numeric(mydf$revised-mydf$received)
