@@ -43,21 +43,17 @@ Create a df column that gives the row ID of the match, and another specifying if
 
 
 ```{r findretracted}
+jlist<-c('cin_220p','cmmm_113p','dm_56p','ecam_139p','jeph_46p',
+         'jhe_76p','js_58p','misy_122p','mpe_200p','scn_94p',
+         'sp_72p','wcmc_170p','complexity_42p','bmri_138p','jfs_31p',
+         'oti_9p','am_26p','abb_25p','jchem_25p','jcse_4p',
+         'ijac_9p','emi_14p','ddns_42p','jo_65p','ast_13p')
 
-thisjournal<-'cin_220p'
-thisjournal<-'cmmm_113p'
-thisjournal<-'ecam_139p'
-thisjournal<-'jeph_46p'
-thisjournal<-'jhe_76p'
-thisjournal<-'misy_122p'
-thisjournal<-'wcmc_170p'
-thisjournal<-'js_58p'
-thisjournal<-'cin_220p'
-thisjournal<-'scn_94p'
-thisjournal<-'mpe_200p'
-thisjournal<-'dm_56p'
-thisjournal<-'sp_72p'
-jfile<-paste0('H_articles_',thisjournal,'.csv')
+print(jlist)
+
+j=25
+
+jfile<-paste0('H_articles_',jlist[j],'.csv')
 thisfile<-here('Hindawi_results',jfile)
 mydf<- read.csv(thisfile)
 w<-which(colnames(mydf)=='retracted')
@@ -84,6 +80,8 @@ if(length(ww)>0){
 }
 }
 #There are also some marked "Corrigendum to" which I have not coded but could
+
+
 ```
 
 
@@ -187,7 +185,7 @@ for (e in 1:nrow(myed)){
   myed$SI[e]<-si
 }
 #Confirm, some eds have more than one SI - but for some it is coded 0, ie they do some regular editing
-
+thisjournal<-jlist[j]
 filename<-paste0('Editors_',thisjournal,'.csv')
 write.csv(myed,here('Editor_analysed',filename),row.names=F)
 
@@ -195,3 +193,60 @@ write.csv(myed,here('Editor_analysed',filename),row.names=F)
 
 
 ```
+
+
+```{r lookatemails}
+docountries<-0
+if(docountries==1){
+j1<-1
+for (j in j1:length(jlist)){
+  shortname<-unlist(strsplit(jlist[j],"_"))[1]
+jfile<-paste0('H_articles_',jlist[j],'.csv')
+thisfile<-here('Hindawi_results',jfile)
+mydf<- read.csv(thisfile)
+mydf$short<-shortname
+w<-which(colnames(mydf)=='days_rev_rec')
+if(length(w>0)){mydf<-mydf[,-c(w:(w+1))]}
+if(j==j1){bigdf <- mydf}
+if(j>1){
+bigdf<-rbind(bigdf,mydf)
+}
+}
+#add email domain column
+bigdf$country<-NA
+bigdf$emaildomain<-NA
+
+for (r in 1:nrow(bigdf)){
+bigdf$emaildomain[r]<-unlist(str_split(bigdf$affiliation[r],'@'))[2]
+bigdf$country[r]<-str_sub(bigdf$emaildomain[r],-3,-1)
+
+}
+
+
+noncountry<-c('com','krd','net','nfo','org','ork','sia')
+w<-which(bigdf$country %in% noncountry)
+
+#remove those with no country affiliation
+bigdf<-bigdf[-w,]
+
+countrytab<-as.data.frame.matrix(table(bigdf$country,bigdf$short))
+countrytots<-rowSums(countrytab[,])
+lowc<-which(countrytots<20)
+
+
+#First collapse those with fewer than 1% into 'other'
+temptab<-table(bigdf$country,bigdf$short)
+
+ptab<-as.data.frame.matrix(round(prop.table(temptab,2),3))
+others<-colSums(ptab[lowc,])
+ptab[(nrow(ptab)+1),]<-others
+row.names(ptab)[nrow(ptab)]<-'others'
+ptab<-ptab[-lowc,]
+
+
+}
+
+
+
+```
+
