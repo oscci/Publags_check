@@ -1,0 +1,187 @@
+---
+title: "Plot SI lags"
+author: "Dorothy Bishop"
+date: '2023-01-24'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(tidyverse)
+require(here)
+require(TSDT) #for unfactor function
+```
+
+## Explanation
+Relevant files have been copied over from Scrape_pubs project.  
+
+The script readHindawi.Rmd is set up to scrape data from Hindawi journal website.
+As well as DOI, title, authors, email, etc we have dates of receipt, revision, acceptance and publication, editor, and title of special issue (if any). 
+
+The list of journals was originally based on Smut_journals.csv, i.e. journals flagged up as having pubpeer comments. We can if need be cross reference those.  
+
+In addition, I selected 3 journals at random from the mail list, Hjournals.csv, which has all the journals listed on the website. This is to check for problems in journals not already on our radar.
+
+83: Clinical Reports in Veterinary Medicine Has only one page! 15 papers. Most look kosher emails
+216 : J Thyroid research - Has only one page!  9 papers, only 2 with academic affiliations
+220: J Tropical medicine  - has only 7 pages - lots of gmail addresses
+
+So this is interesting - it seems we also have a species of journal that publishes only a handful of papers each year. Things like publication lags look normal for thse. 
+
+I tried a few more
+1: Abstract Applied Analysis  39 papers in 2022; generally look OK
+113: Indoor Air  - this one seems to have been taken over from another publisher - nil on website
+166: Journal of Aging Research - only 10 papers; dates /emails look fine
+
+
+## First task
+Would be useful to know about retractions and corrections
+Go through titles and find "Retracted:", and then find the original article - should have same title minus the retracted. 
+Create a df column that gives the row ID of the match, and another specifying if correction/retraction
+
+
+
+
+```{r findretracted}
+
+thisjournal<-'cin_220p'
+thisjournal<-'cmmm_113p'
+thisjournal<-'ecam_139p'
+thisjournal<-'jeph_46p'
+thisjournal<-'jhe_76p'
+thisjournal<-'misy_122p'
+thisjournal<-'wcmc_170p'
+thisjournal<-'js_58p'
+jfile<-paste0('H_articles_',thisjournal,'.csv')
+thisfile<-here('Hindawi_results',jfile)
+mydf<- read.csv(thisfile)
+w<-which(colnames(mydf)=='retracted')
+
+if(length(w)==0){ #if retracted col not present, create it now
+  
+
+mydf$retracted<-NA
+mydf$corrected<-NA
+matches<-unlist(gregexpr('Retracted:', mydf$title))
+w<-which(matches> -1) #row number of those with 'Retracted:'
+mydf$retracted[w]<- 0 #flag retraction with 0 (identifies retraction even if not matched)
+#Can we match it with an earlier paper? (may not, if it was in previous year)
+if(length(w)>0){
+for (r in 1:length(w)){
+  
+trunctitle<-substring(mydf$title[w[r]],12,nchar(mydf$title[w[r]])) #title without "Retraction:"
+ww<-which(mydf$title==trunctitle)
+if(length(ww)>0){
+  mydf$retracted[ww]<-w[r]
+  mydf$retracted[w[r]]<-(-ww)
+}
+}
+}
+}
+#There are also some marked "Corrigendum to" which I have not coded but could
+```
+
+
+# Publication lag  
+
+Compute N days from receipt to a) revision and b) acceptance.
+
+Some don't have revision marked, in which case could set date as same as acceptance - i.e. this would then be initial response.
+
+I'll make it 3 columns to avoid too much confusion.  
+Need to remember how to calculate dates.  
+
+```{r computelags}
+#NB if re-reading a file that is already processed, this won't work!
+w<-which(colnames(df)=='days_rec_acc') #check if conversion for dates done
+if(length(w)==0){
+#convert to R date format
+#NB if it was opened in xls then format may have changed! Need to check
+datecol<-which(colnames(mydf)=='received')
+for (d in datecol:(datecol+3)){
+  mydf[,d]<-as.Date(mydf[,d],'%d-%b-%y')
+}
+
+mydf$days_rec_rev<-as.numeric(mydf$revised-mydf$received)
+mydf$days_rec_acc<-as.numeric(mydf$accepted-mydf$received)
+
+mydf$daysresp<-mydf$days_rec_acc
+w<-which(!is.na(mydf$days_rec_rev))
+mydf$daysresp[w]<-mydf$days_rec_rev[w]
+w1<-which(mydf$days_rec_acc<0) #cases where accepted date not recorded
+
+
+#As we have a copy of the files in the Scrape_Pub project, it seems safe to resave here with the updated information and the same name
+
+#write.csv(mydf,thisfile,row.names=F) #save file updated with retraction and date info
+}
+```
+
+Next options: identify most busy editors (those with most papers) and look at distributions of their lags, depending on whether or not special issue.
+
+Are there some editors who do both special issue and non?
+
+Initial check
+
+```{r editorcheck}
+
+#All editors
+myed<-data.frame(table(mydf$editor))
+#Remove those who handled fewer than 5 papers
+
+myed<-myed[myed$Freq>4,]
+myed<-myed[order(-myed$Freq),]
+colnames(myed)<-c("Editor","Npapers")
+myed$Editor<-unfactor(myed$Editor)
+
+#Editors in special issues
+myedsi<-data.frame(table(mydf$editor[mydf$SI!=0]))
+myedsi<-myedsi[myedsi$Freq>4,]
+myedsi<-myedsi[order(-myedsi$Freq),]
+colnames(myedsi)<-c("Editor","Npapers")
+myedsi$Editor<-unfactor(myedsi$Editor)
+
+#Need to unfactor, otherwise different factors mess things up for the 2 dfs
+
+
+myed$Nsi<-0
+for (e in 1:nrow(myed)){
+  w<-which(myedsi$Editor==myed$Editor[e])
+  if(length(w)>0){
+    myed$Nsi[e]<-myedsi$Npaper[w]
+  }
+}
+
+myed$medianlag<-NA
+myed$pbelow20<-NA
+
+for (e in 1:nrow(myed)){
+  w<-which(mydf$editor==myed$Editor[e])
+  myed$medianlag[e]<-median(mydf$daysresp[w],na.rm=T)
+  myed$pbelow20[e]<-100*length(which(mydf$daysresp[w]<20))/length(w)
+  
+}
+
+myed<-myed[order(-myed$pbelow20),]
+
+
+#Are any editors responsible for more than one special issue?
+
+myed$SI<-NA
+for (e in 1:nrow(myed)){
+   w<-which(mydf$editor==myed$Editor[e])
+   si<-unique(mydf$SI[w])
+   if(length(si)>2){print(myed$Editor[e])}
+   
+  #print (si)
+  myed$SI[e]<-si
+}
+#Confirm, some eds have more than one SI - but for some it is coded 0, ie they do some regular editing
+
+filename<-paste0('Editors_',thisjournal,'.csv')
+write.csv(myed,here('Editor_analysed',filename),row.names=F)
+
+
+
+
+```
