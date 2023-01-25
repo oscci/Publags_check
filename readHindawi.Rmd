@@ -1,0 +1,190 @@
+---
+title: "ScraperHindawi"
+author: "Dorothy Bishop"
+date: '2023-01-24'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+#Updated and tidied up for Publags_check project
+knitr::opts_chunk$set(echo = TRUE)
+require(stringr)
+require(rvest)
+require(here)
+```
+
+
+```{r readarticles}
+
+jfilename<-here('Hjournals.csv')  #
+myjournals<-read.csv(jfilename)
+
+thisj <-166  #row number for this journal
+
+myjname<-myjournals$name[thisj]
+print(myjname)
+myshortname<-myjournals$shortname[thisj]
+myyear<-2022
+
+artdf<-read.csv(here('H_articles.csv'))
+thisrow<-nrow(artdf) #we'll always add to end of df
+#-------------------------------------------------------------------------------
+#Want to find the maximum N webpages for this journal (and year) - though we will stick with 2022 for now
+#-------------------------------------------------------------------------------
+#I can't find an easy way to get this, so we will just have to do an incremental loop, and catch errors when the page does not exist.
+#In fact, with the test journal, biomed research international, it does not crash when attempting to open a page with no contents - it just has an empty list. So this might work?
+
+
+#-------------------------------------------------------------------------------
+#Articles in journal with article number
+#-------------------------------------------------------------------------------
+
+maxpage<-200 #last page of results - we guess at this, it's usually under 200
+lastpage<-maxpage
+for (thispage in seq(maxpage,1,-1)){  #count down so know when to stop
+print(thispage)
+ j<-paste0("https://www.hindawi.com/journals/",myshortname,"/contents/year/",myyear,"/page/",thispage) 
+ 
+myart <- read_html(j)
+artlist<-myart %>%
+  html_nodes("h2") %>%
+  html_text()
+#artlist
+
+if(length(artlist)<3){lastpage<-lastpage-1}
+if(length(artlist)>2){ #blank issues ignored
+
+
+#The journal TOC does include special issues, but we need to find how they are flagged - it does show up on the page that lists titles
+#We then need the article number, 
+
+artn<-myart %>%
+  html_nodes("li") %>%
+  html_text()
+#artn
+artIDs<-artn[grepl('- Article ID',artn)]
+ artIDs<-gsub("- Article ID ","",artIDs)  #article IDs!
+artIDs
+
+#-------------------------------------------------------------------------------
+#Open file for each article number and write relevant info to df
+#-------------------------------------------------------------------------------
+for (a in 1:length(artIDs)){
+  thisrow<-thisrow+1
+  artdf[thisrow,]<-NA
+  artname<-paste0("https://www.hindawi.com/journals/",myshortname,"/",myyear,"/",artIDs[a]) 
+
+
+  
+  mydetails <- read_html(artname)
+  # #li gives reference list!  body as node gives whole article
+  # mydetail <- mydetails %>%
+  #   html_nodes("head") %>%
+  #   html_text()
+  # mydetail
+
+  mydetail<-mydetails %>%
+   html_elements(".articleHeader")%>%       
+      html_text()
+mydetail
+#V close to what we need - only problem is no gap between authors and title. Has dates and academic editor!
+#Dates of publication etc - can strip of in reverse
+mypub<-NA
+  publoc<-unlist(gregexpr('Published', mydetail))
+  if (publoc>0){
+ mypub<-substr(mydetail, (publoc+9),nchar(mydetail))
+  mydetail<-substr(mydetail,1,(publoc-1))
+  }
+myacc<-NA
+  accloc<-unlist(gregexpr('Accepted', mydetail))
+  if (accloc>0){
+ myacc<-substr(mydetail, (accloc+8),nchar(mydetail))
+  mydetail<-substr(mydetail,1,(accloc-1))
+  }
+  myrev<-NA
+  revloc<-unlist(gregexpr('Revised', mydetail))
+  if (revloc>0){
+ myrev<-substr(mydetail, (revloc+7),nchar(mydetail))
+  mydetail<-substr(mydetail,1,(revloc-1))
+  }
+    myrec<-NA
+  recloc<-unlist(gregexpr('Received', mydetail))
+  if (recloc>0){
+ myrec<-substr(mydetail, (recloc+8),nchar(mydetail))
+  mydetail<-substr(mydetail,1,(recloc-1))
+  }
+  myed<-NA
+    edloc<-unlist(gregexpr('Editor', mydetail))
+  if (edloc>0){
+ myed<-substr(mydetail, (edloc+8),nchar(mydetail))
+  mydetail<-substr(mydetail,1,(edloc-1))
+  }
+
+
+#Authors all in one list
+  myauthors<-mydetails %>%
+   html_elements(".articleHeader__authors")%>%       
+      html_text()
+myauthors
+#Authors separate
+myauthor1<-mydetails %>%
+   html_elements(".articleHeader__authors_author")%>%       
+      html_text()
+myauthor1
+
+
+  mytitle<-mydetails %>%
+   html_elements(".articleHeader__title")%>%       
+      html_text()
+mytitle
+
+mysi<-0
+ mys<-mydetails %>%
+   html_elements(".articleHeader__specialIssue_title")%>%       
+   html_text()
+   if(length(mys)>0){
+     mysi<-mys}
+
+ mydetail<-mydetails %>%
+   html_elements(".articleHeader__meta")%>%       
+  html_text()
+  mydetail
+  posdoi<-unlist(gregexpr('doi', mydetail))
+ mydoi<-substr(mydetail, (posdoi+8),nchar(mydetail))
+
+#NB emails are in there ; bit harder to extract!
+
+
+  hrefs<-mydetails %>%
+#   html_nodes(".articleHeader__authors__author")%>%  
+   html_elements("a")%>% 
+     html_attr("href")
+  # hrefs  #YESSS!!
+   
+   myemail<-hrefs[grepl('mailto:',hrefs)][1] #first mention only
+    myemail<-gsub("mailto:","",myemail)  #strip out mailto text
+ 
+
+artdf$jnumber[thisrow]<-thisj
+artdf$Journal[thisrow]<-myjname
+artdf$year[thisrow]<-myyear
+artdf$doi[thisrow]<-mydoi
+artdf$title[thisrow]<-mytitle
+artdf$authors[thisrow]<-myauthors
+artdf$received[thisrow]<-myrec
+artdf$revised[thisrow]<-myrev
+artdf$accepted[thisrow]<-myacc
+artdf$published[thisrow]<-mypub
+artdf$editor[thisrow]<-myed
+artdf$ID[thisrow]<-artIDs[a]
+artdf$SI[thisrow]<-mysi
+artdf$row[thisrow]<-thisrow
+artdf$affiliation[thisrow]<-myemail
+}
+
+}
+}
+nuname<-paste0('Hindawi_results/H_articles_',myshortname,'_',lastpage,'p.csv' )
+write.csv(artdf,here(nuname),row.names=F)
+```
+
