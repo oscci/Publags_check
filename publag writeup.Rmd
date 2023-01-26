@@ -1,0 +1,150 @@
+---
+title: "Article processing lag as a red flag for editorial malpractice: a case study of Hindawi special issues"
+author: "Dorothy Bishop"
+date: '2023-01-26'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(tidyverse)
+require(here)
+require(TSDT) #for unfactor function
+require(lubridate)
+```
+## Abstract
+    Introduction—what is the topic?
+    Statement of purpose?
+    Summarize why have other studies not tackled similar research questions?
+    How has the research question been tackled?
+    How was the research done?
+    What is the key impact of the research?
+
+## Introduction  
+Scientific publishers need to be constantly alert to the possibility of their journals being hijacked by fraudsters. In the past, the main benefits to fraudsters were career-based: they might be appointed or promoted on the basis of what looked like a strong publication record. In the past decade, fraudulent operations have been discovered that give direct financial benefits to middlemen who charge authors to have papers placed in journals, with the costs varying according to the prestige of the journal. These operations have been called 'papermills', and are growing rapidly enough to give concern to major publishers (COPE & STM, 2022). The published material may be faked using templates and/or AI text generation, or may be genuine work by an author such as student project that would not usually meet threshold for publication in an academic journal. The motivation for authors to use papermills is typically career advancement, which typically depends on achieving a publication in a journal that is indexed in major publication databases such as Thomson ISI's Journal Citation Reports or PubMed. 
+
+There appear to be at least two routes by which papermill products get into reputable journals. The first is when editors are hoodwinked: the faked paper is good enough to be accepted via the usual route, being submitted to an editor who sends it out for peer reviewers, who give a favourable response. The papermill identified by Byrne and Labbé (2017) was of this kind: plausible papers on gene knockouts were generated using a template that could be modified by simply changing the genes and phenotypes under consideration. One variant of this approach is when authorship is sold for a paper once it has been accepted for publication: authorship slots can be purchased, with the cost varying according to the number of authors and the prominence in the authorship list. These new author names are then added prior to publication. Another variant is for authors to recommend peer reviewers who are part of the papermill operation. In large and complex fields, editors may have difficulty identifying peer reviewers and rely on such author recommendations, especially if the recommended reviewers have a track record in the field - which, they may have achieved owingn to papermill publications. 
+Much of the emphasis of publishers is in training editors and peer reviewers to be alert to this kind of papermill activity. For instance, Seifert (2021) described how his journal was targeted by papermills, and provided advice on how to recognise fraudulent papers.
+
+The second route, which is the focus of the current paper, is when a complicit editor facilitates papermill publication. There has been little research on this topic, and the motivations of editors who engage in such activity can only be assumed to be financial. As noted by COPE & STM (2022) "A popular route to publication is through a special guest edited issue. Often journals will invite contributions to a special issue on a specific topic and this provides an opening for paper mills to submit often many publications to the same issue. One publisher found a special issue of one of their journals where the guest editor’s identity could not be verified and all of the papers had identified flaws that indicated they were fake." Clearly, where an editor is corrupt, no amount of training is going to solve the problem of papermills. Such cases may be identified by showing a pattern of accepting seriously flawed papers, such as those that use "tortured phrases" (Cabanac & Labbé, 2021), those that include irrelevant citations (used by papermills to increase prominence of their papers), are impossible to understand, or  are not related to the topic of the special issue. Publishers should be able to confirm whether the peer review process has been compromised, but to date have been slow to act when problems are reported to them, perhaps because identification of such issues requires one to read the papers in question and form a subjective judgement of their quality. 
+
+The focus of the current paper is on another potential indicator of editorial malpractice, which is an unusually short lag between receipt of a paper by a journal and the initial response to the author: Editor Response Time
+
+What would be a plausible range of days to get an initial response from an editor? In the optimal scenario, the editor allocates reviewers on the day that the paper is submitted, the reviewers immediately agree to review the paper and produce their reviews in a timely fashion: most editors would be very happy if this occurred within a week. The reviews are returned to the author, who revises the paper accordingly and resubmits it to the journal. In theory, this whole process could be achieved within one week; however, in practice, this seldom occurs. The editor may take some time before allocating reviewers; it is often hard to find reviewers; reviewers may take weeks to produce their reviews; the author may then take weeks to address the reviewer concerns. The typical time course of this process will vary from one discipline to another, and will also depend on the diligence of the editor and the complexity of the paper. In general, fast processing times are to be welcomed; however, when an editor has a pattern of unusually fast response times, this can be a red flag that the usual peer review process has been subverted. 
+
+The goal of this paper is to assess Editor Response Times in a set of Hindawi journals that have been flagged up on the website PubPeer as having numerous problematic papers in special issues. Editor Response Times for papers in special issues will be compared with those for regular articles in the same journal, to test the hypothesis that unfeasibly short lags characterise some special issues.
+In addition, it is predicted that special issues with short Editor Response Times will have a higher number of comments on PubPeer than special issues with normal range Editor Response Times. 
+
+## Methods 
+### Database. 
+Information was extracted from the websites for the following journals:
+
+### Variables
+
+The independent variables was Special issue status: identity of special issue or 0 if a regular article.
+The main dependent variable was Editor Response Time, computed from dates of receipt of submission and revision. This is an indirect index of Editor Response Time, as we cannot know the time it takes and author to write their revision, but the minimum turnaround time would be one day. So we know that the Editor Response Time cannot be greater the interval between 'revision received' and 'submission received'. Thus, insofar as it is inaccurate, this method will overestimate Editor Response Time.  Since we treat unusually fast responses as indicative of potential problems, this method will give editors the benefit of the doubt. 
+
+Most articles undergo revision after peer review; if there is no revision, this implies that the reviews were so positive that no revision was needed, in which case one can use the interval between 'submission received' and date of acceptance as an index of Editor Response Time. Thus, the variable Editor RT was computed in days as:
+Date of Revision - Date Received
+except in cases where there was no Date of Revision, in which case it was:
+Date of Acceptance - Date Received
+
+A second dependent variable was PubPeer comment, coded as binary 0 or 1. Presence of a PubPeer comment on an article cannot be taken as an indicator of problems: some comments may be neutral or positive, or raise unwarranted concerns. However, a number of sleuths, including this author, have been using PubPeer to flag up indicators of potential fraud, such as plagiarism, "tortured phrases", inappropriate citations, off-topic content, nonsensical formulae and figures, or odd author affiliations; a spot check (described below) showed that virtually all comments on this dataset were of this kind. 
+
+
+
+ 
+
+## Results  
+
+```{r readfile}
+mydf<-read.csv(here('Hindawi_2022_2023.csv'))
+mydf$origrow<-mydf$row
+mydf$row<-1:nrow(mydf)
+w<-which(is.na(mydf$ID))
+mydf<-mydf[-w,]
+```
+
+```{r retractions}
+#retractions
+mydf$retracted<-NA
+matches<-unlist(gregexpr('Retracted:', mydf$title))
+w<-which(matches> -1) #row number of those with 'Retracted:'
+mydf$retracted[w]<- 0 #flag retraction with 0 (identifies retraction even if not matched)
+#Can we match it with an earlier paper? (may not, if it was in previous year)
+if(length(w)>0){
+  for (r in 1:length(w)){
+    
+    trunctitle<-substring(mydf$title[w[r]],12,nchar(mydf$title[w[r]])) #title without "Retraction:"
+    ww<-which(mydf$title==trunctitle)
+    if(length(ww)>0){
+      mydf$retracted[ww]<-w[r]
+      mydf$retracted[w[r]]<-(-ww)
+    }
+  }
+}
+
+```
+
+
+```{r publicationlag}
+#NB if re-reading a file that is already processed, this won't work!
+
+#convert to R date format
+#NB if it was opened in xls then format may have changed! Need to check
+datecol<-which(colnames(mydf)=='received')
+daterange<-datecol:(datecol+3)
+#date format as varies by journal! 
+#need to preprocess
+
+
+#convert space to hyphen
+for (d in daterange){
+mydf[,d]<-gsub(" ","-",mydf[,d])  
+mydf[,d]<-gsub("-20","-",mydf[,d]) 
+mydf[,d]<-gsub("Sept","Sep",mydf[,d]) 
+}
+
+#Find there are still some references that had initial digit of date stripped off when scraping!  We need to redo scraping - or just drop this journal maybe
+#These are around 2000 references in all, from journal 2 (Evidence based medicine) and Security and Info Networks
+#For now we will flag these with an impossible date
+for (r in 1:nrow(mydf)){
+  if (nchar(mydf$accepted[r])<9){
+    mydf$accepted[r]<-'01-Jan-00'
+    mydf$revised[r]<-'01-Jan-00'
+  }
+}
+
+  dateformat<-'%d-%b-%y' #all should now be in this format
+  for (d in daterange){
+  mydf[,d]<-as.Date(mydf[,d],dateformat)
+  }
+
+mydf$days_rec_rev<-as.numeric(mydf$revised-mydf$received)
+mydf$days_rec_acc<-as.numeric(mydf$accepted-mydf$received)
+
+#For ones with wrong date format, lag will be a large negative number
+#For retractions, lag is zero
+
+mydf$daysresp<-mydf$days_rec_acc
+w<-which(!is.na(mydf$days_rec_rev))
+mydf$daysresp[w]<-mydf$days_rec_rev[w]
+w1<-which(mydf$days_rec_acc<0) #cases where accepted date not recorded
+
+
+
+
+```
+
+
+## Discussion  
+
+## References  
+Byrne, J. A., & Labbé, C. (2017). Striking similarities between publications from China describing single gene knockdown experiments in human cancer cell lines. Scientometrics, 110(3), 1471–1493. https://doi.org/10.1007/s11192-016-2209-6
+
+Cabanac, G., & Labbé, C. (2021). Prevalence of nonsensical algorithmically generated papers in the scientific literature. Journal of the Association for Information Science and Technology, 72(12), 1461–1476. https://doi.org/10.1002/asi.24495  
+
+COPE & STM. (2022). Paper mills: Research report from COPE & STM. Committee on Publication Ethics and STM. https://doi.org/10.24318/jtbG8IHL
+
+Seifert, R. (2021). How Naunyn-Schmiedeberg’s Archives of Pharmacology deals with fraudulent papers from paper mills. Naunyn-Schmiedeberg’s Archives of Pharmacology, 394(3), 431–436. https://doi.org/10.1007/s00210-021-02056-8
+  
