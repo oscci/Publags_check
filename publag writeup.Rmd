@@ -10,7 +10,12 @@ knitr::opts_chunk$set(echo = TRUE)
 require(tidyverse)
 require(here)
 require(TSDT) #for unfactor function
-require(lubridate)
+require(cowplot)
+require(PupillometryR)
+packages <- c("ggplot2", "dplyr", "lavaan", "plyr", "cowplot", "rmarkdown", "readr", "caTools", "bitops")
+if (length(setdiff(packages, rownames(installed.packages()))) > 0) { install.packages(setdiff(packages, rownames(installed.packages())))
+}
+
 ```
 ## Abstract
     Introduction—what is the topic?
@@ -132,10 +137,117 @@ mydf$daysresp[w]<-mydf$days_rec_rev[w]
 w1<-which(mydf$days_rec_acc<0) #cases where accepted date not recorded
 
 
+```
+
+```{r tabulate_editors}
+#First just ensure all editor names are in title case (otherwise get duplicates iwth different cases)
+mydf$editor<-str_to_title(mydf$editor)
+#remove stops from author names
+mydf$editor<-gsub(".","",mydf$editor,fixed=TRUE)   #fixed needed or else . treated as wildcard
+
+
+myed<-data.frame(table(mydf$editor))
+#Remove those who handled fewer than 5 papers
+
+myed<-myed[myed$Freq>4,]
+myed<-myed[order(-myed$Freq),]
+colnames(myed)<-c("Editor","Npapers")
+myed$Editor<-unfactor(myed$Editor)
+
+#Editors in special issues
+myedsi<-data.frame(table(mydf$editor[mydf$SI!=0]))
+myedsi<-myedsi[myedsi$Freq>4,]
+myedsi<-myedsi[order(-myedsi$Freq),]
+colnames(myedsi)<-c("Editor","Npapers")
+myedsi$Editor<-unfactor(myedsi$Editor)
+
+myed$Nsi<-0
+for (e in 1:nrow(myed)){
+  w<-which(myedsi$Editor==myed$Editor[e])
+  if(length(w)>0){
+    myed$Nsi[e]<-myedsi$Npaper[w]
+  }
+}
+
+myed$medianlag<-NA
+myed$pbelow20<-NA
+
+#remove cases where date formatting gave negative lags, and retractions
+w<-which(mydf$daysresp<1)
+mydf2<-mydf[-w,]
+
+for (e in 1:nrow(myed)){
+  w<-which(mydf2$editor==myed$Editor[e])
+  myed$medianlag[e]<-median(mydf2$daysresp[w],na.rm=T)
+  myed$pbelow20[e]<-100*length(which(mydf2$daysresp[w]<20))/length(w)
+  
+}
+
+myed<-myed[order(-myed$pbelow20),]
 
 
 ```
 
+```{r rainclouds}
+#dir.create(here('figs'))
+# width and height variables for saved plots
+w=6
+h=3
+
+mydf$facj<-as.factor(mydf$Journal)
+
+thisjn<-33
+
+
+       
+thisj<-levels(mydf$facj)[thisjn]
+
+myd<-filter(mydf,facj==thisj)
+
+#How many special issues?
+jsi <-levels(as.factor(myd$SI))
+
+sitab<-data.frame(table(myd$SI))
+#remove SI with 25 or fewer papers
+sitab<-sitab[sitab$Freq>25,]
+
+usesi<-unique(unfactor(sitab$Var1))
+myd2<-myd[myd$SI %in% usesi,]
+
+myd2$SIshort<-strtrim(myd2$SI,20)
+myd2$days_trunc<-myd2$daysresp
+w<-which(myd2$days_trunc>140)
+myd2$days_trunc[w]<-140
+myd2<-myd2[myd2$days_trunc>0,] #removed negatives and retractions
+
+
+
+myd2$nued<-myd2$editor #need to find a way of omitting those with few papers
+w<-which(myd2$SI==0)
+myd2$nued[w]<-'_REGULAR ARTICLES'
+myt<-data.frame(table(myd2$nued))
+keeped<-which(myt$Freq>20)
+keeps<-myt$Var1[keeped]
+myd3<-myd2
+myd3<-myd3[myd3$nued %in% keeps,]
+
+
+#Basic plot
+
+p1<-ggplot(myd2,aes(x=SIshort,y=days_trunc, fill = SIshort, colour = SIshort))+
+geom_flat_violin(position = position_nudge(x = .25, y = 0),adjust =2)+
+geom_point(position = position_jitter(width = .15), size = .25)+
+ ylab('Days')+xlab('')+coord_flip()+theme_cowplot()+guides(fill = "none", colour = "none") +
+ggtitle(thisj)
+
+p2<-ggplot(myd3,aes(x=nued,y=days_trunc, fill = SIshort, colour = SIshort))+
+geom_flat_violin(position = position_nudge(x = .25, y = 0),adjust =2)+
+geom_point(position = position_jitter(width = .15), size = .25)+
+ ylab('Days')+xlab('')+coord_flip()+theme_cowplot()+guides(fill = "none", colour = "none") +
+ggtitle(thisj)
+
+
+```
 
 ## Discussion  
 
