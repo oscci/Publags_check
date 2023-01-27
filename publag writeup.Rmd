@@ -1,8 +1,11 @@
 ---
-title: "Article processing lag as a red flag for editorial malpractice: a case study of Hindawi special issues"
+title: 'Article processing lag as a red flag for editorial malpractice: a case study
+  of Hindawi special issues'
 author: "Dorothy Bishop"
 date: '2023-01-26'
-output: html_document
+output:
+  word_document: default
+  html_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -42,35 +45,62 @@ In addition, it is predicted that special issues with short Editor Response Time
 
 ## Methods 
 ### Database. 
-Information was extracted from the websites for the following journals:
+Information was extracted for the period from Jan 1 2022 to Jan 20 2023 from the websites for a set of ten journals, selected because they had been identified by **Smut Clyde** and **Parashorea x** as having numerous articles with PubPeer comments:   <ul>
+Computational and Mathematical Methods in Medicine
+Evidence-Based Complementary and Alternative Medicine
+Wireless Communications and Mobile Computing
+Computational Intelligence and Neuroscience
+Journal of Environmental and Public Health
+Mobile Information Systems
+Journal of Healthcare Engineering
+Journal of Sensors
+Security and Communication Networks
+Mathematical Problems in Engineering
+</ul>  
 
 ### Variables
+The following variables were extracted from the journal website for each article:  
+Publication year, article	ID, doi, title, author list (as a single string), email of first author, date received, date revised, date accepted, date published, editor, name of special issue (or 0 if regular article).  
 
-The independent variables was Special issue status: identity of special issue or 0 if a regular article.
-The main dependent variable was Editor Response Time, computed from dates of receipt of submission and revision. This is an indirect index of Editor Response Time, as we cannot know the time it takes and author to write their revision, but the minimum turnaround time would be one day. So we know that the Editor Response Time cannot be greater the interval between 'revision received' and 'submission received'. Thus, insofar as it is inaccurate, this method will overestimate Editor Response Time.  Since we treat unusually fast responses as indicative of potential problems, this method will give editors the benefit of the doubt. 
+Additional variables were computed:  
+__Retracted__: Where an article was followed by a subsequent articles of the same title prefaced by 'Retraction', both the original article and the Retraction were linked by a code.  
 
-Most articles undergo revision after peer review; if there is no revision, this implies that the reviews were so positive that no revision was needed, in which case one can use the interval between 'submission received' and date of acceptance as an index of Editor Response Time. Thus, the variable Editor RT was computed in days as:
-Date of Revision - Date Received
-except in cases where there was no Date of Revision, in which case it was:
-Date of Acceptance - Date Received
+__Editor Response Time__: This was computed from dates of receipt of submission and revision. This is an indirect and minimum index of Editor Response Time (RT), as we cannot know the time it takes and author to write their revision, but Editor RT cannot be greater the interval between 'revision received' and 'submission received'. Thus, insofar as it is inaccurate, this method will overestimate Editor RT, i.e., will give editors the benefit of the doubt, when looking for unfeasibly brief lags.
 
-A second dependent variable was PubPeer comment, coded as binary 0 or 1. Presence of a PubPeer comment on an article cannot be taken as an indicator of problems: some comments may be neutral or positive, or raise unwarranted concerns. However, a number of sleuths, including this author, have been using PubPeer to flag up indicators of potential fraud, such as plagiarism, "tortured phrases", inappropriate citations, off-topic content, nonsensical formulae and figures, or odd author affiliations; a spot check (described below) showed that virtually all comments on this dataset were of this kind. 
+Most articles undergo revision after peer review; if there is no revision, this implies that the reviews were so positive that no revision was needed, in which case one can use the interval between 'submission received' and date of acceptance as an index of Editor RT.  
+In sum, the variable Editor RT was computed in days as:    
+Date of Revision - Date Received  
+except in cases where there was no Date of Revision, in which case it was:  
+Date of Acceptance - Date Received  
+
+__PubPeer comment__: Coded as binary 0 or 1 for each article. This was coded using data provided by Brandon Snell of the PubPeer Foundation.  Presence of a PubPeer comment on an article cannot be taken as an indicator of problems: some comments may be neutral or positive, or raise unwarranted concerns. However, a number of sleuths, including this author, have used PubPeer to flag up indicators of potential fraud, such as plagiarism, "tortured phrases", inappropriate citations, off-topic content, nonsensical formulae and figures, or odd author affiliations; a spot check (described below) showed that virtually all comments on this dataset were of this kind. 
+
+__Email domain of author__: This was coded for each article as academic or non-academic. This judgement was based solely on whether the domain name ended with a country code or .edu: domains were not checked for legitimacy.
+
+### Analysis of special issues
+For each journal, plots of distributions of Editor RT were made for special issues with at least 25 articles, and for all Regular articles in the same journal. The Regular articles were used to compute a cutoff for Editor RT, based on the 5th percentile: where a special issue had many articles with Editor RT shorter than this cutoff, this suggests normal peer review may not have occurred . 
+
+### Analysis of editors
+For each Editor of a special issue, the proportion of Editor RTs below the 5th percentile cutoff was determined. Using this approach, a set of editors was selected for further scrutiny.  
+
+A table was created showing, for each selected Editor, whether the editor had an academic email, whether the editor's academic affiliation/activity could be readily found on Google search,  how many special issues the editor had been involved with, how many special issue papers were handled (across all journals), the median Editor RT, the proportion of articles with non-academic emails, and the proportion of articles with PubPeer comments. 
 
 
-
- 
 
 ## Results  
 
-```{r readfile}
-mydf<-read.csv(here('Hindawi_2022_2023.csv'))
+```{r readfile,include=FALSE}
+mydf<-read.csv(here('Hindawi_2022_2023_with_pubpeer.csv'))
 mydf$origrow<-mydf$row
-mydf$row<-1:nrow(mydf)
+
 w<-which(is.na(mydf$ID))
 mydf<-mydf[-w,]
+df2<-mydf[!duplicated(mydf$ID),] 
+mydf$row<-1:nrow(mydf)
+
 ```
 
-```{r retractions}
+```{r retractions,include=FALSE}
 #retractions
 mydf$retracted<-NA
 matches<-unlist(gregexpr('Retracted:', mydf$title))
@@ -92,7 +122,7 @@ if(length(w)>0){
 ```
 
 
-```{r publicationlag}
+```{r publicationlag,include=FALSE}
 #NB if re-reading a file that is already processed, this won't work!
 
 #convert to R date format
@@ -110,15 +140,6 @@ mydf[,d]<-gsub("-20","-",mydf[,d])
 mydf[,d]<-gsub("Sept","Sep",mydf[,d]) 
 }
 
-#Find there are still some references that had initial digit of date stripped off when scraping!  We need to redo scraping - or just drop this journal maybe
-#These are around 2000 references in all, from journal 2 (Evidence based medicine) and Security and Info Networks
-#For now we will flag these with an impossible date
-for (r in 1:nrow(mydf)){
-  if (nchar(mydf$accepted[r])<9){
-    mydf$accepted[r]<-'01-Jan-00'
-    mydf$revised[r]<-'01-Jan-00'
-  }
-}
 
   dateformat<-'%d-%b-%y' #all should now be in this format
   for (d in daterange){
@@ -139,7 +160,28 @@ w1<-which(mydf$days_rec_acc<0) #cases where accepted date not recorded
 
 ```
 
-```{r tabulate_editors}
+```{r tabulate_SIs,include=FALSE}
+#Need a table of special issues
+#Also short journal names (different from the keys)
+
+sjournals<-read.csv('Smut_journals.csv')
+mydf$abbrev<-NA
+mydf$short<-NA
+for (sj in 1:nrow(sjournals)){
+  thisj<-sjournals$title[sj]
+  w<-which(mydf$Journal==thisj)
+  mydf$abbrev[w]<-sjournals$abbrev[sj]
+  mydf$short[w]<-sjournals$shortname[sj]
+}
+mydf$longSI<-paste0(mydf$short,": ",mydf$SI)
+
+SItab<-data.frame(table(mydf$longSI))
+SItab<-SItab[SItab$Freq>25,] #only special issues with more than 25 articles
+SItab$ID<-1:nrow(SItab)
+write.csv(SItab,'SItab.csv',row.names=F)
+```
+
+```{r tabulate_editors,include=FALSE}
 #First just ensure all editor names are in title case (otherwise get duplicates iwth different cases)
 mydf$editor<-str_to_title(mydf$editor)
 #remove stops from author names
@@ -184,47 +226,76 @@ for (e in 1:nrow(myed)){
 }
 
 myed<-myed[order(-myed$pbelow20),]
-
+edfocuslist<-mydf[FALSE,] #create an emplty clone df to hold editors of interest
 
 ```
 
-```{r rainclouds}
+
+```{r CIs}
+#For each journal, compute 95% CI for Editor RT for regular articles.
+sjournals<-read.csv('Smut_Journals.csv')
+
+ssjournals<-sjournals[1:10,]
+
+sjournals$medlag<-NA
+sjournals$lowcut<-NA
+
+
+for (j in 1:10){
+  jdf<-filter(mydf,Journal==ssjournals$title[j],SI==0)
+  sjournals$medlag[j]<-median(jdf$daysresp,na.rm=T)
+  sjournals$lowcut[j]<-quantile(jdf$daysresp,.05,na.rm=T)
+}
+
+write.csv(sjournals,'Smut_journals.csv',row.names=F)
+```
+
+```{r rainclouds,include=FALSE}
 #dir.create(here('figs'))
 # width and height variables for saved plots
 w=6
 h=3
 
-mydf$facj<-as.factor(mydf$Journal)
+#add SI abbreviated names to mydf - we do this only for the 10 journals of interest
+# - use hand-crafted file SItab_cut
+ mydf$SIabbrev<-NA
+  SInames<-read.csv('SItab_cut.csv')
+for (ss in 1:nrow(SInames)){
+  w<-which(mydf$SI==trimws(SInames$Special.Issue[ss])) #trimws removes leading/trailing white space
+  if(length(w)>0){
+  mydf$SIabbrev[w]<-SInames$ID[ss]
+  }
+}
 
-thisjn<-33
+for (j in 1:10){
 
+  myd<-filter(mydf,Journal==ssjournals$title[j])
+  thisj<-myd$abbrev[1] #My abbreviation of title for the figure
+thisj<-myd$Journal[1]
 
-       
-thisj<-levels(mydf$facj)[thisjn]
+jsi <-levels(as.factor(myd$SIabbrev))
 
-myd<-filter(mydf,facj==thisj)
-
-#How many special issues?
-jsi <-levels(as.factor(myd$SI))
-
-sitab<-data.frame(table(myd$SI))
+sitab<-data.frame(table(myd$SIabbrev))
 #remove SI with 25 or fewer papers
 sitab<-sitab[sitab$Freq>25,]
 
 usesi<-unique(unfactor(sitab$Var1))
-myd2<-myd[myd$SI %in% usesi,]
+myd2<-myd[myd$SIabbrev %in% usesi,]
 
-myd2$SIshort<-strtrim(myd2$SI,20)
+
 myd2$days_trunc<-myd2$daysresp
 w<-which(myd2$days_trunc>140)
 myd2$days_trunc[w]<-140
 myd2<-myd2[myd2$days_trunc>0,] #removed negatives and retractions
-
+w<-which(is.na(myd2$SIabbrev))
+if(length(w)>0){
+  myd2<-myd2[-w,]}
 
 
 myd2$nued<-myd2$editor #need to find a way of omitting those with few papers
 w<-which(myd2$SI==0)
-myd2$nued[w]<-'_REGULAR ARTICLES'
+myd2$nued[w]<-'_REGULAR EDITORS'
+myd2$SIabbrev[w]<-'_OTHER'
 myt<-data.frame(table(myd2$nued))
 keeped<-which(myt$Freq>20)
 keeps<-myt$Var1[keeped]
@@ -233,25 +304,56 @@ myd3<-myd3[myd3$nued %in% keeps,]
 
 
 #Basic plot
-
-p1<-ggplot(myd2,aes(x=SIshort,y=days_trunc, fill = SIshort, colour = SIshort))+
+jtitle<-thisj
+if(j==2){
+  jtitle<- 'Evidence-Based Complementary & Alternative Med'}
+#orig name too long
+p1<-ggplot(myd2,aes(x=SIabbrev,y=days_trunc, fill = SIabbrev, colour = SIabbrev))+
 geom_flat_violin(position = position_nudge(x = .25, y = 0),adjust =2)+
 geom_point(position = position_jitter(width = .15), size = .25)+
  ylab('Days')+xlab('')+coord_flip()+theme_cowplot()+guides(fill = "none", colour = "none") +
-ggtitle(thisj)
+ggtitle(jtitle)
+
 
 p2<-ggplot(myd3,aes(x=nued,y=days_trunc, fill = SIshort, colour = SIshort))+
 geom_flat_violin(position = position_nudge(x = .25, y = 0),adjust =2)+
 geom_point(position = position_jitter(width = .15), size = .25)+
  ylab('Days')+xlab('')+coord_flip()+theme_cowplot()+guides(fill = "none", colour = "none") +
-ggtitle(thisj)
+ggtitle(jtitle)
 
+p1+geom_hline(yintercept=sjournals$lowcut[j],linetype='dashed')
+savename<- paste0('figs/',thisj,'.eps')
+
+ggsave(savename)
+}
+```
+
+
+```{r bit}
+#create list with just one row for each of the nued editors. 
+#Ultimately will do this with aggregate so can also record N retractions
+#Also of interest to see the email domains of authors
+
+edadd<-myd3[!duplicated(myd3$nued),]
+edadd<-edadd[edadd$nued!='_REGULAR EDITORS',]
+edfocuslist<-rbind(edfocuslist,edadd)
 
 ```
+
+Distributions of Editor RTs in days are shown for special issues and regular articles in raincloud plots (Allen et al, 2021) for each of the 10 journals considered here. A key to Special Issue titles can be found in Supplementary Table 1. Special issues with fewer than 25 articles are omitted from the plots, as well as retractions. The plotted data are censored, so that Editor RTs greater than 200 are shown as 200. 
+
+
+Table 1 shows further information for all Editors where more than 30% of Editor RTs are below the lower bound of the 95% confidence interval, based on Editor RTs for regular articles. 
+
+
+
+
 
 ## Discussion  
 
 ## References  
+Allen, M., Poggiali, D., Whitaker, K., Marshall, T. R., Van Langen, J., & Kievit, R. A. (2021). Raincloud plots: A multi-platform tool for robust data visualization [version 2; peer review: 2 approved]. Wellcome Open Research, 15191.2. https://doi.org/10.12688/wellcomeopenres.15191.2  
+
 Byrne, J. A., & Labbé, C. (2017). Striking similarities between publications from China describing single gene knockdown experiments in human cancer cell lines. Scientometrics, 110(3), 1471–1493. https://doi.org/10.1007/s11192-016-2209-6
 
 Cabanac, G., & Labbé, C. (2021). Prevalence of nonsensical algorithmically generated papers in the scientific literature. Journal of the Association for Information Science and Technology, 72(12), 1461–1476. https://doi.org/10.1002/asi.24495  
