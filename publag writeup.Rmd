@@ -14,12 +14,11 @@ require(tidyverse)
 require(here)
 require(TSDT) #for unfactor function
 require(cowplot)
-require(PupillometryR)
+require(PupillometryR) #bizarrely seems needed for making rainclouds
 require(stringr)
-#this from raincloud but mostly not needed
-packages <- c("ggplot2", "dplyr", "lavaan", "plyr", "cowplot", "rmarkdown", "readr", "caTools", "bitops")
-if (length(setdiff(packages, rownames(installed.packages()))) > 0) { install.packages(setdiff(packages, rownames(installed.packages())))
-}
+require(rvest) #for scraping
+
+
 
 ```
 ## Abstract
@@ -201,7 +200,8 @@ mydf$editor<-gsub(".","",mydf$editor,fixed=TRUE)   #fixed needed or else . treat
 ```
 
 ```{r oldeditortable}
-
+olded<-0 #for historic 
+if(olded==1){
 myed<-data.frame(table(mydf$editor))
 #Remove those who handled fewer than 5 papers
 
@@ -241,12 +241,12 @@ for (e in 1:nrow(myed)){
 
 myed<-myed[order(-myed$pbelow20),]
 edfocuslist<-mydf[FALSE,] #create an emplty clone df to hold editors of interest
-
+}
 ```
 
 
-```{r CIs}
-#For each journal, compute 95% CI for Editor RT for regular articles.
+```{r quantiles}
+#For each journal, find cutoff for lowest 5% for Editor RT for regular articles.
 sjournals<-read.csv('Smut_Journals.csv')
 
 ssjournals<-sjournals[1:10,]
@@ -384,17 +384,57 @@ write.csv(etab,'etab.csv',row.names=F)
 etab$NSI<-NA
 etab$PubPeer
 etab$retracted
+etab$academail
+etab$jabbrev
+etab$sampleID #allows us to quickly check website
 #How many special issues is editor involved in
 for (e in 1:nrow(etab)){
   f<-filter(mydf,editor==etab$Editor[e])
   etab$NSI[e]<-length(unique(f$SI))
   etab$PubPeer[e]<-length(unique(f$pubpeer_link))-1
   etab$retracted[e]<-length(which(!is.na(f$retracted)))
+  etab$academail[e]<-sum(f$academail)
+  etab$jabbrev[e]<-f$short[1]
+  etab$sampleID[e]<-f$ID[1]
 }
 
 etab<-etab[order(-etab$Npaper),]
 
 write.csv(etab,'etab.csv',row.names=F)
+
+```
+
+```{r addSIinfo}
+
+SIbit<-read.csv('SI_list.csv')
+SIbit<-SIbit[!duplicated(SIbit$SI),]
+
+etab$EdEmail<-NA
+
+SIedstring<-as.vector(c(SIbit$ed1,SIbit$ed2,SIbit$ed3))
+SIemailstring<-as.vector(c(SIbit$ed1email,SIbit$ed2email,SIbit$ed3email))
+#fix formatting of editor names
+SIedstring<-str_to_title(SIedstring)
+SIedstring<-gsub(".","",SIedstring,fixed=TRUE)   #fixed needed or else . treated as wildcard
+SIedstring<-gsub("  "," ",SIedstring,fixed=TRUE) #remove double spaces
+w<-which(is.na(SIedstring)) #find NA and remove from both vectors
+SIedstring<-SIedstring[-w]
+SIemailstring<-SIemailstring[-w]
+
+#This is clunky but got there in the end
+for (e in 1:nrow(etab)){
+  thiseditor<-unfactor(etab$Editor[e])
+  mymatch<-str_detect(SIedstring,thiseditor)
+  w<-which(mymatch==T)
+  if(length(w)>0){
+    etab$EdEmail[e]<-SIemailstring[w[1]]
+  }
+}
+
+write.csv(etab,'Editor_bigtab.csv',row.names=F)
+
+# SIalphaed<-SIedstring[order(SIedstring)]
+# write_lines(SIalphaed,'AlphaEds.txt')
 
 ```
 
