@@ -13,18 +13,36 @@ require(rvest)
 require(here)
 ```
 
+itees	163
+cmmi	91
+scanning	255
+jfs	185
+oti	239
+am	19
+abb	35
+jchem	172
+jcse	176
+ijac	119
+emi	101
+bmi	46
+ddns	98
+jo	199
+ast	4
+complexity	85
 
 ```{r readarticles}
+
 
 jfilename<-here('Hjournals.csv')  #
 myjournals<-read.csv(jfilename)
 
-thisj <-166  #row number for this journal
+jnums <- c(87, 103, 273, 88, 181, 228, 187, 209, 260, 224, 99, 258, 163, 91, 255, 185, 239, 19, 35, 172, 176, 119, 101, 46, 98, 199, 4, 85)
+for (thisj in jnums){ #row number for this journal
 
 myjname<-myjournals$name[thisj]
 print(myjname)
 myshortname<-myjournals$shortname[thisj]
-myyear<-2022
+myyear<-2023
 
 artdf<-read.csv(here('H_articles.csv'))
 thisrow<-nrow(artdf) #we'll always add to end of df
@@ -39,7 +57,7 @@ thisrow<-nrow(artdf) #we'll always add to end of df
 #Articles in journal with article number
 #-------------------------------------------------------------------------------
 
-maxpage<-200 #last page of results - we guess at this, it's usually under 200
+maxpage<-5 #last page of results - we guess at this, it's usually under 200
 lastpage<-maxpage
 for (thispage in seq(maxpage,1,-1)){  #count down so know when to stop
 print(thispage)
@@ -184,7 +202,63 @@ artdf$affiliation[thisrow]<-myemail
 
 }
 }
-nuname<-paste0('Hindawi_results/H_articles_',myshortname,'_',lastpage,'p.csv' )
+nuname<-paste0('Hindawi_results/H_articles_',myyear,'_',myshortname,'_',lastpage,'p.csv' )
 write.csv(artdf,here(nuname),row.names=F)
+}
+```
+
+
+```{r readspecissues}
+jlist<-read.csv('smut_journals.csv')$shortname[1:10]
+
+#create empty data frame to hold details
+sidf<-data.frame(matrix(NA,nrow=0,ncol=13))
+colnames(sidf)<-c('Jabbrev','apc','SI','SI_DOI','ed1','ed1affil','ed1email',
+                  'ed2','ed2affil','ed2email',
+                  'ed3','ed3affil','ed3email')
+thisrow<-0
+
+for (j in 1:10){
+
+jsiname <-paste0("https://www.hindawi.com/journals/",jlist[j],"/psi/")
+  mydetails <- read_html(jsiname)
+  
+  mydetail<-mydetails %>%
+   html_elements("body")%>%       
+      html_text()
+mydetail
+
+aloc<-unlist(gregexpr('APC',mydetail))[1]
+apc<-substr(mydetail,(aloc+4),(aloc+7))
+x<-unlist(str_split(mydetail,"title"))
+x1<-x[75:length(x)] #first 74 entries are boilerplate
+
+for (n in 1:length(x1)){
+  titleloc<-4 #the word 'title' has been removed, so title starts at 4th char
+  openloc<-unlist(gregexpr('open', x1[n]))
+  nameloc<-unlist(gregexpr('name', x1[n]))
+  suploc<-unlist(gregexpr('sup', x1[n]))
+  emailloc<-unlist(gregexpr('email', x1[n]))
+   aliasloc<-unlist(gregexpr('alias', x1[n]))
+    articlesloc<-unlist(gregexpr('articles', x1[n]))
+  
+  thisrow<-thisrow+1
+  sidf[thisrow,]<-NA #initialise
+  sidf$Jabbrev[thisrow]<-jlist[j]
+  sidf$SI[thisrow]<-substr(x1[n], titleloc,(openloc-4))
+  sidf$SI_DOI[thisrow]<-substr(x1[n], (aliasloc+9),(articlesloc-4))
+  sidf$ed1[thisrow]<-substr(x1[n], (nameloc[1]+7),(emailloc[1]-4))
+  sidf$ed2[thisrow]<-substr(x1[n], (nameloc[2]+7),(emailloc[2]-4))
+  sidf$ed3[thisrow]<-substr(x1[n], (nameloc[3]+7),(emailloc[3]-4))
+  sidf$ed1email[thisrow]<-substr(x1[n], (emailloc[1]+8),(suploc[1]-4))
+  sidf$ed2email[thisrow]<-substr(x1[n], (emailloc[2]+8),(suploc[2]-4))
+  sidf$ed3email[thisrow]<-substr(x1[n], (emailloc[3]+8),(suploc[3]-4))
+  sidf$apc[thisrow]<-apc
+  
+}
+
+}
+
+
 ```
 
