@@ -259,6 +259,7 @@ for (n in 1:length(x1)){
 
 }
 
+write.csv(sidf,'SI_list.csv',row.names=F)
 
 ```
 
