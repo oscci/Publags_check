@@ -17,6 +17,7 @@ require(cowplot)
 require(PupillometryR) #bizarrely seems needed for making rainclouds
 require(stringr)
 require(rvest) #for scraping
+require(ggpubr) #organise plots
 
 
 
@@ -30,23 +31,27 @@ require(rvest) #for scraping
     What is the key impact of the research?
 
 ## Introduction  
-Scientific publishers need to be constantly alert to the possibility of their journals being hijacked by fraudsters. In the past, the main benefits to fraudsters were career-based: they might be appointed or promoted on the basis of what looked like a strong publication record. In the past decade, fraudulent operations have been discovered that give direct financial benefits to middlemen who charge authors to have papers placed in journals, with the costs varying according to the prestige of the journal. These operations have been called 'papermills', and are growing rapidly enough to give concern to major publishers (COPE & STM, 2022). The published material may be faked using templates and/or AI text generation, or may be genuine work by an author such as student project that would not usually meet threshold for publication in an academic journal. The motivation for authors to use papermills is typically career advancement, which typically depends on achieving a publication in a journal that is indexed in major publication databases such as Thomson ISI's Journal Citation Reports or PubMed. 
+Scientific publishers need to be constantly alert to the possibility of their journals being hijacked by fraudsters. In the past, the main benefits to fraudsters were career-based: they might be appointed or promoted on the basis of what looked like a strong publication record. In the past decade, fraudulent operations have been discovered that give direct financial benefits to middlemen who charge authors to have papers placed in journals, with the costs varying according to the prestige of the journal. These operations have been called 'papermills', and are growing rapidly enough to give concern to major publishers (COPE & STM, 2022). The published material may be faked using templates and/or AI text generation, plagiarised, or may be genuine work by an author such as student project that would not usually meet threshold for publication in an academic journal. The motivation for authors to use papermills is typically career advancement, which typically depends on achieving a publication in a journal that is indexed in major publication databases such as Thomson ISI's Journal Citation Reports or PubMed (Tomentella, 2022). In addition, papermills are used to boost citations of authors by ensuring that their articles are cited copiously, regardless of whether or not they are relevant.
 
-There appear to be at least two routes by which papermill products get into reputable journals. The first is when editors are hoodwinked: the faked paper is good enough to be accepted via the usual route, being submitted to an editor who sends it out for peer reviewers, who give a favourable response. The papermill identified by Byrne and Labbé (2017) was of this kind: plausible papers on gene knockouts were generated using a template that could be modified by simply changing the genes and phenotypes under consideration. One variant of this approach is when authorship is sold for a paper once it has been accepted for publication: authorship slots can be purchased, with the cost varying according to the number of authors and the prominence in the authorship list. These new author names are then added prior to publication. Another variant is for authors to recommend peer reviewers who are part of the papermill operation. In large and complex fields, editors may have difficulty identifying peer reviewers and rely on such author recommendations, especially if the recommended reviewers have a track record in the field - which, they may have achieved owingn to papermill publications. 
+There appear to be at least two routes by which papermill products get into reputable journals. The first is when editors are hoodwinked: the faked paper is good enough to be accepted via the usual route, being submitted to an editor who sends it out for peer reviewers, who give a favourable response. The papermill identified by Byrne and Labbé (2017) was of this kind: plausible papers on gene knockouts were generated using a template that could be modified by simply changing the genes and phenotypes under consideration. One variant of this approach is when authorship is sold for a paper once it has been accepted for publication: authorship slots can be purchased, with the cost varying according to the number of authors and the prominence in the authorship list. These new author names are then added prior to publication. Another variant is for authors to recommend peer reviewers who are part of the papermill operation. In large and complex fields, editors may have difficulty identifying peer reviewers and rely on such author recommendations, especially if the recommended reviewers have a track record in the field - which, they may have achieved owingn to papermill publications.  
 Much of the emphasis of publishers is in training editors and peer reviewers to be alert to this kind of papermill activity. For instance, Seifert (2021) described how his journal was targeted by papermills, and provided advice on how to recognise fraudulent papers.
 
-The second route, which is the focus of the current paper, is when a complicit editor facilitates papermill publication. There has been little research on this topic, and the motivations of editors who engage in such activity can only be assumed to be financial. As noted by COPE & STM (2022) "A popular route to publication is through a special guest edited issue. Often journals will invite contributions to a special issue on a specific topic and this provides an opening for paper mills to submit often many publications to the same issue. One publisher found a special issue of one of their journals where the guest editor’s identity could not be verified and all of the papers had identified flaws that indicated they were fake." Clearly, where an editor is corrupt, no amount of training is going to solve the problem of papermills. Such cases may be identified by showing a pattern of accepting seriously flawed papers, such as those that use "tortured phrases" (Cabanac & Labbé, 2021), those that include irrelevant citations (used by papermills to increase prominence of their papers), are impossible to understand, or  are not related to the topic of the special issue. Publishers should be able to confirm whether the peer review process has been compromised, but to date have been slow to act when problems are reported to them, perhaps because identification of such issues requires one to read the papers in question and form a subjective judgement of their quality. 
+The second route, which is the focus of the current paper, is when a complicit editor facilitates papermill publication. There has been little research on this topic, with most evidence coming from exposés in blogposts (Clyde, 2022; Magazinov, 2022; Wise, 2022; Tomentella, 2023). As noted by COPE & STM (2022) "A popular route to publication is through a special guest edited issue. Often journals will invite contributions to a special issue on a specific topic and this provides an opening for paper mills to submit often many publications to the same issue. One publisher found a special issue of one of their journals where the guest editor’s identity could not be verified and all of the papers had identified flaws that indicated they were fake." Clearly, where an editor is corrupt, no amount of training is going to solve the problem of papermills. Such cases may be identified by showing a pattern of accepting seriously flawed papers, such as those that use "tortured phrases" (Cabanac & Labbé, 2021), those that include irrelevant citations (used by papermills to increase prominence of their papers), are impossible to understand, or  are not related to the topic of the special issue. Publishers should be able to check their editorial systems database to confirm whether the peer review process has been compromised, but to date have been slow to act when problems are reported to them, perhaps because identification of such issues requires one to read the papers in question and form a subjective judgement of their quality. 
 
-The focus of the current paper is on another potential indicator of editorial malpractice, which is an unusually short lag between receipt of a paper by a journal and the initial response to the author: Editor Response Time
+One source of evidence for papermill operation comes from consideration of email addresses of authors: where a single email domain predominates, and/or does not match their academic affiliation, this raises suspicions (Clyde, 2022). In a recent blogpost, Wise (2022) focused on the Hindawi journal Wireless Communications and Mobile Computing, noting an astounding growth in the number of published articles, from 269 papers in 2019 to 2,429 for 2022 (up to October). This was entirely driven by content from special issues. In an in-depth analysis of one special issue, he noted a pattern of suspicious author email addresses that did not match the author affiliations. 
 
-What would be a plausible range of days to get an initial response from an editor? In the optimal scenario, the editor allocates reviewers on the day that the paper is submitted, the reviewers immediately agree to review the paper and produce their reviews in a timely fashion: most editors would be very happy if this occurred within a week. The reviews are returned to the author, who revises the paper accordingly and resubmits it to the journal. In theory, this whole process could be achieved within one week; however, in practice, this seldom occurs. The editor may take some time before allocating reviewers; it is often hard to find reviewers; reviewers may take weeks to produce their reviews; the author may then take weeks to address the reviewer concerns. The typical time course of this process will vary from one discipline to another, and will also depend on the diligence of the editor and the complexity of the paper. In general, fast processing times are to be welcomed; however, when an editor has a pattern of unusually fast response times, this can be a red flag that the usual peer review process has been subverted. 
+The focus of the current paper is on another potential indicator of editorial malpractice, which is an unusually short lag between receipt of a paper by a journal and the initial response to the author: Editor Response Time. In their 2023 blogpost, _Parashorea Tomentalla_ noted that a considerable number of Hindawi special issue papers were accepted within 1-2 months, noting sarcastically that the special issues were 'very efficient'. 
 
-The goal of this paper is to assess Editor Response Times in a set of Hindawi journals that have been flagged up on the website PubPeer as having numerous problematic papers in special issues. Editor Response Times for papers in special issues will be compared with those for regular articles in the same journal, to test the hypothesis that unfeasibly short lags characterise some special issues.
-In addition, it is predicted that special issues with short Editor Response Times will have a higher number of comments on PubPeer than special issues with normal range Editor Response Times. 
+This leads us to ask what would be a plausible range of days to get an initial response from an editor? In the optimal scenario, the editor allocates reviewers on the day that the paper is submitted, the reviewers immediately agree to review the paper and produce their reviews in a timely fashion: most editors would be very happy if this occurred within a week. The reviews are returned to the author, who revises the paper accordingly and resubmits it to the journal. In theory, this whole process could be achieved within one week; however, in practice, this seldom occurs. The editor may take some time before allocating reviewers; it is often hard to find reviewers; reviewers may take weeks to produce their reviews; the author may then take weeks to address the reviewer concerns. The typical time course of this process will vary from one discipline to another, and will also depend on the diligence of the editor, availability of reviewers and the complexity of the paper. In general, fast processing times are to be welcomed; however, when an editor has a pattern of unusually fast response times, this can be a red flag that the usual peer review process has been subverted.
+
+The goal of this paper is to assess Editor Response Times in a set of Hindawi journals that have been flagged up by sleuths as having numerous problematic papers in special issues. The starting point is the spreadsheet that was started by _Smut Clyde_ to document possible papermill articles in Hindawi journals, which is referenced by a recent blogpost by _Parashorea Tomentella_. This will be referred to as the Clyde/Tomentella spreadsheet. 
+
+In the current paper, Editor Response Times for papers in special issues are compared with those for regular articles in the same journal, to test the hypothesis that unfeasibly short lags characterise some special issues.
+In addition, it is predicted that editors of special issues with short Editor Response Times will have a higher number of other 'red flags' for papermill activity, viz comments on PubPeer, retractions, and lack of diversity of author email domains, than those editing special issues with normal range Editor Response Times.  
 
 ## Methods 
 ### Database. 
-Information was extracted for the period from Jan 1 2022 to Jan 20 2023 from the websites for a set of ten journals, selected because they had been identified by **Smut Clyde** and **Parashorea x** as having numerous articles with PubPeer comments:   <ul>
+Information was extracted for the period from Jan 1 2022 to Jan 20 2023 from the websites for a set of ten journals, identified as those with the most PubPeer comments in the spreadsheet maintained by _Smuth Clyde_ and _Parashorea Tomentella_:   <ul>
 Computational and Mathematical Methods in Medicine
 Evidence-Based Complementary and Alternative Medicine
 Wireless Communications and Mobile Computing
@@ -58,6 +63,8 @@ Journal of Sensors
 Security and Communication Networks
 Mathematical Problems in Engineering
 </ul>  
+
+The format of the spreadsheet was similar to that of the Clyde/Tomentella spreadsheet, but the entries covered all articles published in the 10 journals from Jan 1 2022 to Jan 20 2023, rather than just those with PubPeer comments. 
 
 ### Variables
 The following variables were extracted from the journal website for each article:  
@@ -74,20 +81,20 @@ Date of Revision - Date Received
 except in cases where there was no Date of Revision, in which case it was:  
 Date of Acceptance - Date Received  
 
-__PubPeer comment__: Coded as binary 0 or 1 for each article. This was coded using data provided by Brandon Snell of the PubPeer Foundation.  Presence of a PubPeer comment on an article cannot be taken as an indicator of problems: some comments may be neutral or positive, or raise unwarranted concerns. However, a number of sleuths, including this author, have used PubPeer to flag up indicators of potential fraud, such as plagiarism, "tortured phrases", inappropriate citations, off-topic content, nonsensical formulae and figures, or odd author affiliations; a spot check (described below) showed that virtually all comments on this dataset were of this kind. 
+__PubPeer comment__: Coded as binary 0 or 1 for each article. This was coded using data provided by Brandon Snell of the PubPeer Foundation. Presence of a PubPeer comment on an article cannot be assumed to be an indicator of problems: some comments may be neutral or positive, or raise unwarranted concerns. However, a number of sleuths, including this author, have used PubPeer to flag up indicators of potential fraud, such as plagiarism, "tortured phrases", inappropriate citations, off-topic content, nonsensical formulae and figures, or odd author affiliations; a spot check of 100 PubPeer comments selected at random from the spreadsheet showed that all comments on this dataset were of this kind. 
 
-__Email domain of author__: This was coded for each article as academic or non-academic. This judgement was based solely on whether the domain name ended with a country code or .edu: domains were not checked for legitimacy.
+__Email diversity__: This was computed simply as the number of unique email domains divided by the total number of articles processed by an editor. The aim of using this measure was to identify cases similar to those described by Clyde (2022) and Wise (2022), where the impression was that a fake email domain was being used for numerous submissions.  
 
 ### Analysis of special issues
-For each journal, plots of distributions of Editor RT were made for special issues with at least 25 articles, and for all Regular articles in the same journal. The Regular articles were used to compute a cutoff for Editor RT, based on the 5th percentile: where a special issue had many articles with Editor RT shorter than this cutoff, this suggests normal peer review may not have occurred . 
+For each journal, plots of distributions of Editor RT were made for special issues with at least 25 articles, and for all Regular articles in the same journal. The Regular articles across all journals were used to compute a cutoff for Editor RT, based on the 2nd percentile: this corresponded to 29 days. Thus if special issue articles were processed in the same way as regular articles, we would expect only 2% to have an Editor RT below this cutoff. Where a special issue had many articles with Editor RT shorter than this cutoff, this suggests normal peer review may not have occurred . 
 
 ### Analysis of editors
-Analysis was restricted to editors who had handled at least 30 articles. For each Editor of a special issue, the proportion of Editor RTs below the 5th percentile cutoff was determined. Using this approach, a set of editors was selected for further scrutiny.  
+Analysis was restricted to editors who had handled at least 30 articles. For each Editor of a special issue, the proportion of Editor RTs below the 2nd percentile cutoff was determined. 
 
 A table was created showing, for each selected Editor, whether the editor had an academic email, whether the editor's academic affiliation/activity could be readily found on Google search,  how many special issues the editor had been involved with, how many special issue papers were handled (across all journals), the median Editor RT, the proportion of articles with non-academic emails, and the proportion of articles with PubPeer comments. 
 
 
-## Results  
+
 
 ```{r readfile,include=FALSE}
 mydf<-read.csv(here('Hindawi_2022_2023_with_pubpeer.csv'))
@@ -109,6 +116,8 @@ mydf$ecountry[r]<-str_sub(mydf$edomain[r],-3,-1)
 }
 w<-which(mydf$ecountry %in% c('cat','com','eus','krd','net','nfo','org','sia'))
 mydf$academail[w]<-0
+
+
 ```
 
 ```{r retractions,include=FALSE}
@@ -116,19 +125,34 @@ mydf$academail[w]<-0
 mydf$retracted<-NA
 matches<-unlist(gregexpr('Retracted:', mydf$title))
 w<-which(matches> -1) #row number of those with 'Retracted:'
+if(length(w)>0){
 mydf$retracted[w]<- 0 #flag retraction with 0 (identifies retraction even if not matched)
 #Can we match it with an earlier paper? (may not, if it was in previous year)
-if(length(w)>0){
+
   for (r in 1:length(w)){
     
     trunctitle<-substring(mydf$title[w[r]],12,nchar(mydf$title[w[r]])) #title without "Retraction:"
     ww<-which(mydf$title==trunctitle)
     if(length(ww)>0){
       mydf$retracted[ww]<-w[r]
-      mydf$retracted[w[r]]<-(-ww)
+      mydf$retracted[w[r]]<-(-ww) #neg row number corresponding to the retracted if we have a match
     }
   }
 }
+write.csv(mydf,here('Hindawi_2022_2023_with_pubpeer_email_ret.csv'))
+
+#check which journals have retractions
+w1<-which(mydf$retracted<0)
+truncdf<-mydf[w1,] #only retracted notices
+
+table(truncdf$Journal)
+
+w2<-which(mydf$retracted>-1) #actual retractions in 2022
+truncdf2<-mydf[w2,] #only retractions
+
+t<-table(truncdf2$Journal)
+
+
 
 ```
 
@@ -246,19 +270,20 @@ edfocuslist<-mydf[FALSE,] #create an emplty clone df to hold editors of interest
 
 
 ```{r quantiles}
-#For each journal, find cutoff for lowest 5% for Editor RT for regular articles.
+#For each journal, find cutoff for lowest 2% for Editor RT for regular articles.
 sjournals<-read.csv('Smut_Journals.csv')
+#already has 5% centile as lowcut; Now add lowcut2 for 2%
 
 ssjournals<-sjournals[1:10,]
 
 sjournals$medlag<-NA
-sjournals$lowcut<-NA
+sjournals$lowcut2<-NA
 
 
 for (j in 1:10){
   jdf<-filter(mydf,Journal==ssjournals$title[j],SI==0)
   sjournals$medlag[j]<-median(jdf$daysresp,na.rm=T)
-  sjournals$lowcut[j]<-quantile(jdf$daysresp,.05,na.rm=T)
+  sjournals$lowcut2[j]<-quantile(jdf$daysresp,.02,na.rm=T)
 }
 
 write.csv(sjournals,'Smut_journals.csv',row.names=F)
@@ -266,9 +291,9 @@ write.csv(sjournals,'Smut_journals.csv',row.names=F)
 
 ```{r rainclouds,include=FALSE}
 #dir.create(here('figs'))
-# width and height variables for saved plots
-w=6
-h=3
+#change plot name dynamically
+
+
 
 #add SI abbreviated names to mydf - we do this only for the 10 journals of interest
 # - use hand-crafted file SItab_cut
@@ -318,38 +343,71 @@ myd3<-myd3[myd3$nued %in% keeps,]
 
 
 #Basic plot
-jtitle<-thisj
-if(j==2){
-  jtitle<- 'Evidence-Based Complementary & Alternative Med'}
-#orig name too long
+jtitle<-myd2$abbrev[j]
+
 p1<-ggplot(myd2,aes(x=SIabbrev,y=days_trunc, fill = SIabbrev, colour = SIabbrev))+
 geom_flat_violin(position = position_nudge(x = .25, y = 0),adjust =2)+
 geom_point(position = position_jitter(width = .15), size = .25)+
- ylab('Days')+xlab('')+coord_flip()+theme_cowplot()+guides(fill = "none", colour = "none") +
-ggtitle(jtitle)
-
-
-p2<-ggplot(myd3,aes(x=nued,y=days_trunc, fill = SIshort, colour = SIshort))+
-geom_flat_violin(position = position_nudge(x = .25, y = 0),adjust =2)+
-geom_point(position = position_jitter(width = .15), size = .25)+
- ylab('Days')+xlab('')+coord_flip()+theme_cowplot()+guides(fill = "none", colour = "none") +
-ggtitle(jtitle)
-
-p1+geom_hline(yintercept=sjournals$lowcut[j],linetype='dashed')
+ ylab('Days')+xlab('')+coord_flip()+guides(fill = "none", colour = "none") +
+ggtitle(jtitle)+
+  #geom_hline(yintercept=sjournals$lowcut2[j],linetype='dashed')
+  geom_hline(yintercept=29,linetype='dashed') #use overall 2% cutoff
 savename<- paste0('figs/',thisj,'.eps')
+
+#NB with cowplot theme it is crisper but it has black background with jpg!
 
 ggsave(savename)
 
-# edadd<-myd3[!duplicated(myd3$nued),]
-# edadd<-edadd[edadd$nued!='_REGULAR EDITORS',]
-# edfocuslist<-rbind(edfocuslist,edadd)
+if(j==2){p2<-p1}
+if(j==3){p3<-p1}
+if(j==4){p4<-p1}
+if(j==5){p5<-p1}
+if(j==6){p6<-p1}
+if(j==7){p7<-p1}
+if(j==8){p8<-p1}
+if(j==9){p9<-p1}
+if(j==10){p10<-p1}
+
 }
+  for (b in 1:5){
+    if(b==1){
+      ggarrange(p1,p2,
+                        ncol = 2, nrow = 1)
+         savename<- paste0('figs/bigplot1')
+    }
+    if(b==2){
+      ggarrange(p3,p4,
+                        ncol = 2, nrow = 1)
+         savename<- paste0('figs/bigplot2')
+    }
+    if(b==3){
+      ggarrange(p10,p6,
+                        ncol = 2, nrow = 1)
+         savename<- paste0('figs/bigplot3')
+    }
+    if(b==4){
+     ggarrange(p7,p8,
+                        ncol = 2, nrow = 1)
+         savename<- paste0('figs/bigplot4')
+    }
+    if(b==5){
+      ggarrange(p9,p5,
+                        ncol = 2, nrow = 1)
+         savename<- paste0('figs/bigplot5')
+      
+    }
+      ggsave(paste0(savename,'.eps'))
+      ggsave(paste0(savename,'.jpg'))
+      # edadd<-myd3[!duplicated(myd3$nued),]
+      # edadd<-edadd[edadd$nued!='_REGULAR EDITORS',]
+      # edfocuslist<-rbind(edfocuslist,edadd)
+    
+  }
 ```
 
 
-```{r editorscrutiny}
+```{r editorscrutiny, include=F}
 #create list with just one row for each of the editors. 
-#Ultimately will do this with aggregate so can also record N retractions
 #Also of interest to see the email domains of authors
 
 #look at editors from SI papers across journals.
@@ -366,7 +424,7 @@ etab<-data.frame(table(dfe$editor))
 etab<-etab[etab$Freq>29,] #editors who handled at least 30 papers
 etab<-etab[-1,] #row 1 is blank, remove it
 colnames(etab)<-c('Editor','Npapers')
-cutoff<-36 #average lower cutoff for the 10 journals
+cutoff<-29 #average lower cutoff for 2nd percentile for the 10 journals
 
 etab$medianlag<-NA
 etab$pbelowcut<-NA
@@ -377,7 +435,7 @@ for (e in 1:nrow(etab)){
   
 }
 
-etab<-etab[order(-etab$pbelowcut),]
+#etab<-etab[order(-etab$pbelowcut),]
 
 write.csv(etab,'etab.csv',row.names=F)
 
@@ -387,15 +445,23 @@ etab$retracted
 etab$academail
 etab$jabbrev
 etab$sampleID #allows us to quickly check website
+etab$diversity
 #How many special issues is editor involved in
 for (e in 1:nrow(etab)){
   f<-filter(mydf,editor==etab$Editor[e])
-  etab$NSI[e]<-length(unique(f$SI))
+  etab$NSI[e]<-length(unique(f$SI)) 
   etab$PubPeer[e]<-length(unique(f$pubpeer_link))-1
   etab$retracted[e]<-length(which(!is.na(f$retracted)))
   etab$academail[e]<-sum(f$academail)
-  etab$jabbrev[e]<-f$short[1]
+  
   etab$sampleID[e]<-f$ID[1]
+  mysibit<-unique(f$SIabbrev)
+  mysibit<-mysibit[!is.na(mysibit)]
+  
+  etab$jabbrev[e]<-paste0(c(mysibit),collapse=' + ') #list all SI
+  u<-unique(f$edomain)
+  etab$diversity[e]<-round(100*(length(u)/nrow(f)),0)
+  
 }
 
 etab<-etab[order(-etab$Npaper),]
@@ -404,7 +470,7 @@ write.csv(etab,'etab.csv',row.names=F)
 
 ```
 
-```{r addSIinfo}
+```{r addSIinfo, include=F}
 
 SIbit<-read.csv('SI_list.csv')
 SIbit<-SIbit[!duplicated(SIbit$SI),]
@@ -437,17 +503,65 @@ write.csv(etab,'Editor_bigtab.csv',row.names=F)
 # write_lines(SIalphaed,'AlphaEds.txt')
 
 ```
+## Results  
+### Analysis of Editor RT in special issues  
 
-Distributions of Editor RTs in days are shown for special issues and regular articles in raincloud plots (Allen et al, 2021) for each of the 10 journals considered here. A key to Special Issue titles can be found in Supplementary Table 1. Special issues with fewer than 25 articles are omitted from the plots, as well as retractions. The plotted data are censored, so that Editor RTs greater than 200 are shown as 200. 
+Figures 1 to 5 show distributions of Editor RTs in days for special issues and regular articles in raincloud plots (Allen et al, 2021) for each of the 10 journals considered here. A key to Special Issue titles can be found in Supplementary Table 1. Special issues with fewer than 25 articles are omitted from the plots, as well as retractions. The plotted data are censored, so that Editor RTs greater than 200 are shown as 200. The vertical dotted line corresponds to 29 days, which is the 2nd percentile for Editor RT for all regular articles.
+
+Some general points are evident from inspection of these figures. First, one can see without any need for statistical testing that the median Editor RT is generally much lower for special issues than for regular articles in the same journal. Second, there is variability across special issues, with a few showing distributions similar to those of regular issues - for instance, MPE_12 and ECAM_14 in Figure 1. Many special issues have more than 50% of articles with Editor RT below the 2nd percentile, and a few show extreme distributions with most of the decision times below the 2nd percentile - for instance, ECAM-04, JEPH_13, JS_09.
+
+### Analysis of editors  
+
+Table 1 shows further information for a subset of editors who processed at least 30 special issue papers in 2022. The full version of this Table with information for 114 editors is available as Supplementary Table 2: in Table 1 only the most extreme cases are shown, i.e. those with 75% or more of Editor RTs below below the 29 day cutoff.  
+
+As well as showing the number of papers handled by this editor, we can see the median value for Editor RT, and the proportion below the cutoff.
+
+N Pubpeer indicates the number of articles processed by this editor with PubPeer comments. In theory, it is possible that comments are neutral or positive, so a random subset of articles with PubPeer comments were selected and the comments were scrutinised. In every case, the comments concerned issues relating to papermills. Most were by _Parashorea Tomentella_, and documented either inappropriate citations or inappropriate content that did not fit the special issue. Another frequent commenter was _Rhipidura albiventris_, who noted nonsensical technical content. Overall, there was a weak association between the median Editor RT and the number of PubPeer comments (r = -.3, N = 114, p = xxx), but the second speediest editor had no PubPeer comments, and some editors with unremarkable RTs had attracted significant numbers of comments. This should not surprise us: editor RT is likely to be one indication that an editor is part of a papermill, but it is not reliable, and it is not the only factor. 
+
+In the full Supplementary table we can see that this subset of editors accounted for 274 retractions. The total number in the database was 402. It is noteworthy, though, that the very speedy editors had only two retractions. Retractions tended to be concentrated on a handful of editors, though it is noteworthy that those editors still had large numbers of unretracted papers. For instance, Muhammed Arif had 68 retracted articles, but a further 160 articles processed by this editor for the same special issue had not been retracted. 
+
+A simple measures of email diversity was computed by 
 
 
-Table 1 shows further information for all Editors where more than 30% of Editor RTs are below the lower bound of the 95% confidence interval, based on Editor RTs for regular articles. 
+where more than 30% of Editor RTs are below the cutoff corresponding to the 2nd percentile, based on Editor RTs for regular articles across all 10 journals: this corresponds to an Editorial RT of less than 29 days. 
 
 
 
 
 
 ## Discussion  
+
+Concerns about corruption of special issues have been building among the data sleuthing community, with the past 12 months seeing a number of hard-hitting blogposts pointing at Hindawi journals among others. Although the publisher has taken action, it seems inadequate in the face of a flood of papermill articles that appear to be accepted with little scrutiny.  The publisher has talked of retracting 500 papers, and has made a start on this over the summer, but new special issues continue to appear. The question that the sleuths are asking is why is this not taken more seriously.
+
+One possibility is that the publishers fail to grasp the scale of the problem, and think that the sleuths are exaggerating how serious it is. It needs to be emphasised that, while it is not always easy to judge whether an article is good enough to publish, one can usually identify arrant nonsense very quickly. An exception may be when the work is very technical, and those creating papermill articles are aware of this and often paste in sections of technical material with formulae and graphs in the middle of more prosaic text. However, although the general reader might be fooled by this, a competent editor or reviewer would spot it immediately. Likewise, when we find an article about dental procedures cited withoout explanation in the middle of a article about technical aspects of WiFi, it is clear it is out of place. As Clyde (2022) has put it: "At some point the original text had become unmoored from its original References section, subsequently acquiring a replacement from some other source entirely, so that any resemblance to the in-text citations is purely coincidental".  One strategy for identifying papermill products is to identify articles that cite material by prolific authors who have an inexplicably high citation rate (Magazinov, 2022). It is possible that publisher integrity officers who see a PubPeer comment that politely asks the author to explain the significance of a reference think this is a relatively trivial matter. Alas, it is not, because manipulation of reference lists by citation stacking is a hallmark of papermill products, and where one finds evidence of this, there are usually further problems. 
+
+Use of PubPeer comments as a red flag for problems is far from watertight, but in this context, where papermill activity is already suspected, it can help confirm when concerns are justified. The main limitation is that commenting on Pubpeer about suspected papermill products is a tedious task done by volunteers. It is likely that only a tiny proportion of suspect material is detected this way. 
+
+When considering the editors who are listed in Table 1 (and Supplementary Table 2), it is important to be aware that these may include cases of identity theft. The editor at the top of the list in Table 1, Kaifa Zhao, who is listed as handling 284 papers across two special issues in different journals, with a median RT of 19 days, has an online presence as a graduate student at Hong Kong Polytechnic University. I contacted the University to raise concerns and they conducted an investigation that concluded that the student had not been an editor: his only misdemeanour had been to give his erstwhile supervisor access to his email account. The supervisor has not confirmed this account to me, but did satisfy the university authorities.
+
+Email diversity was added as a possible red flag on the basis of previous accounts suggesting that some papermills would buy email accounts and use them for proxy authors. It is unclear in such cases whether the authors actually exist; it is possible that the articles are used solely as vehicles for citation stacking. 
+
+
+
+
+also "Illustrations with unacknowledged pasts"
+
+"The idea of not publishing Special Issues is not an option, because of business models."
+
+2 Smut CLyde - authors cultivating ‘citation plantations’ to inflate their academic status
+
+5 Smut Clyde - bogus emails in sequence; also nonsense and plagiarised contents
+
+7. SC features
+
+    journals that publish only Special Issues (outsourcing editorial standards and discrimination to any random Guest Editor who suggests a topic);
+    random References that serve only to inflate the bibliometric Citation Indices of those editors;
+    pirated illustrations;
+    burner email accounts, to allow the millers to pose as the corresponding authors.
+
+This is best for Hindawi critique and history, and general info
+"Real scientific papers have Figures, conveying experimental results in pictorial language for the sake of clarity and brevity, so of course these cargo-cult imitations do have pictures that fill the gaps between paragraphs and seem to illustrate something as long as you don’t look at them too closely."
+
 
 ## References  
 Allen, M., Poggiali, D., Whitaker, K., Marshall, T. R., Van Langen, J., & Kievit, R. A. (2021). Raincloud plots: A multi-platform tool for robust data visualization [version 2; peer review: 2 approved]. Wellcome Open Research, 15191.2. https://doi.org/10.12688/wellcomeopenres.15191.2  
@@ -456,7 +570,16 @@ Byrne, J. A., & Labbé, C. (2017). Striking similarities between publications fr
 
 Cabanac, G., & Labbé, C. (2021). Prevalence of nonsensical algorithmically generated papers in the scientific literature. Journal of the Association for Information Science and Technology, 72(12), 1461–1476. https://doi.org/10.1002/asi.24495  
 
-COPE & STM. (2022). Paper mills: Research report from COPE & STM. Committee on Publication Ethics and STM. https://doi.org/10.24318/jtbG8IHL
+Clyde, S. (2022). Cyclotron Branch, Before the Fall – For Better Science. Retrieved 6 September 2022, from https://forbetterscience.com/2022/09/05/cyclotron-branch-before-the-fall/
 
-Seifert, R. (2021). How Naunyn-Schmiedeberg’s Archives of Pharmacology deals with fraudulent papers from paper mills. Naunyn-Schmiedeberg’s Archives of Pharmacology, 394(3), 431–436. https://doi.org/10.1007/s00210-021-02056-8
+COPE & STM. (2022). Paper mills: Research report from COPE & STM. Committee on Publication Ethics and STM. https://doi.org/10.24318/jtbG8IHL  
+
+Kincaid, E. (2022, September 28). Hindawi and Wiley to retract over 500 papers linked to peer review rings. Retraction Watch. https://retractionwatch.com/2022/09/28/exclusive-hindawi-and-wiley-to-retract-over-500-papers-linked-to-peer-review-rings/  
+
+Seifert, R. (2021). How Naunyn-Schmiedeberg’s Archives of Pharmacology deals with fraudulent papers from paper mills. Naunyn-Schmiedeberg’s Archives of Pharmacology, 394(3), 431–436. https://doi.org/10.1007/s00210-021-02056-8  
+
+Tomentella, P. (2023, January 3). Hindawi Garbage Sorting System, Based on Citations. For Better Science. https://forbetterscience.com/2023/01/03/hindawi-garbage-sorting-system-based-on-citations/
+  
+Wise, N. (2022, October 12). What is going on in Hindawi special issues? BishopBlog. http://deevybee.blogspot.com/2022/10/what-is-going-on-in-hindawi-special.html  
+
   
