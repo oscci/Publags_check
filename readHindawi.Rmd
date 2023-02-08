@@ -1,7 +1,7 @@
 ---
 title: "ScraperHindawi"
 author: "Dorothy Bishop"
-date: '2023-01-24'
+date: '2023-02-01'
 output: html_document
 ---
 
@@ -9,26 +9,36 @@ output: html_document
 #Updated and tidied up for Publags_check project
 knitr::opts_chunk$set(echo = TRUE)
 require(stringr)
-require(rvest)
+require(rvest) #for web scraping
 require(here)
 ```
 
-itees	163
-cmmi	91
-scanning	255
-jfs	185
-oti	239
-am	19
-abb	35
-jchem	172
-jcse	176
-ijac	119
-emi	101
-bmi	46
-ddns	98
-jo	199
-ast	4
-complexity	85
+This script reads information from the Hindawi journals website and deposits key information in a spreadsheet in .csv format.  
+Previously, a list was created of all Hindawi journals in alphabetic order, hjournals. Only a subset of these are used here - ones that feature in the Clyde/Zhang spreadsheet. For historic reasons, this script reads the journal codes (shortname) from hjournals, but it would be possible to just go directly from smut_journals, which lists the subset of interest. Note that for hjournals we don't have the shortname for all the journals.  If you want to read a journal not in the list below, you need to add the shortname. This is often lowercase initials of the journal title, but may need to confirm by Googling an article from the journal which will show the full web address, including short title.  
+When webscraping, 28 journals were analysed, but only 10 of these are used in the write-up. This was  just to prevent the write-up becoming unmanageable in terms of amount of information. 
+In addition, the scraping was confined to 2022 and first 3 weeks of 2023 - again to make things manageable.  
+This script could readily be modified to look at earlier years (assuming the html format of web pages is consistent with 2022) and to include more journals (provided their short names are included in hjournals.)
+
+N.B. In general, this runs reasonably smoothly, but there may be glitches - possibly due to throttling, i.e. when website detects too many hits and denies access. This was not a major problem, but can still be frustrating.
+It should be possible to set up the script to deal with this, but for the present it will just crash.
+
+When reading in a large amount of data, e.g. all articles for 2022, I only ran this one journal at a time, rather than using the loop that is currently set up (but commented out) on line 42. 
+The main disadvantage of looping through journals is that it is more fiddly to deal with if you have a crash - and crashes are quite common. However, when reading for 2023, I did use the loop as there were only a few files per journal.
+
+As the program runs, you see it stepping backwards through page numbers - each page on the website has about 12 articles. If there is no information on the page, it moves quickly - once it finds a page with information, you will see the numbers reducing more slowly as information is read in to the data frame artdf.
+
+The information from artdf is saved to a .csv file for that journal which also notes the final page number that was read.
+
+If you get a crash, when reading a specific journal, you can save the information extracted so far as follows:  
+1. Make a note of the page number displayed on the console.  
+2. Run the last 2 lines of the chunk, i.e.   
+       nuname<-paste0('Hindawi_results/H_articles_',myyear,'_',myshortname,'_',lastpage,'p.csv' )  
+       write.csv(artdf,here(nuname),row.names=F) 
+  This will save what you have scraped so far.
+3. On line 59, set maxpage to the page number you recorded at step 1. You should then be able to re-run the chunk to continue processing the files. This will create a new .csv for the same journal, but it is easy then to bolt together the files using rbind.
+
+I created .csv files for each journal using this method, but for the main analysis, the journal files were all bolted together using rbind. 
+
 
 ```{r readarticles}
 
@@ -36,28 +46,36 @@ complexity	85
 jfilename<-here('Hjournals.csv')  #
 myjournals<-read.csv(jfilename)
 
-jnums <- c(87, 103, 273, 88, 181, 228, 187, 209, 260, 224, 99, 258, 163, 91, 255, 185, 239, 19, 35, 172, 176, 119, 101, 46, 98, 199, 4, 85)
-for (thisj in jnums){ #row number for this journal
+jnums <- c(87, 103, 273, 88, 181, 228, 187, 209, 260, 224, 99, 258, 163, 91, 255, 185, 239, 19, 35, 172, 176, 119, 101, 46, 98, 199, 4, 85) #handcrafted list based on row numbers in hjournals - this was original list used in creating database
 
+lastj<-nrow(myjournals)
+firstj<-1
+#use lines above to loop through all journals. More usually set a single same value for first and last to just do one journal
+firstj<-87
+lastj<-87
+
+for (thisj in 1:nrow(myjournals)){ #row number for this journal - option if looping. 
 myjname<-myjournals$name[thisj]
 print(myjname)
 myshortname<-myjournals$shortname[thisj]
-myyear<-2023
-
+print(myshortname)
+myyear<-2022
+isdone<-myjournals$done[thisj]
+if(isdone==0){
 artdf<-read.csv(here('H_articles.csv'))
 thisrow<-nrow(artdf) #we'll always add to end of df
 #-------------------------------------------------------------------------------
 #Want to find the maximum N webpages for this journal (and year) - though we will stick with 2022 for now
 #-------------------------------------------------------------------------------
-#I can't find an easy way to get this, so we will just have to do an incremental loop, and catch errors when the page does not exist.
-#In fact, with the test journal, biomed research international, it does not crash when attempting to open a page with no contents - it just has an empty list. So this might work?
+#I can't find an easy way to get this, so we use an incremental loop, and catch errors when the page does not exist.
+#The program does not crash when attempting to open a page with no contents - it just has an empty list. Accordingly, we start with a high number of potential pages and step down until we find content.
 
 
 #-------------------------------------------------------------------------------
 #Articles in journal with article number
 #-------------------------------------------------------------------------------
 
-maxpage<-5 #last page of results - we guess at this, it's usually under 200
+maxpage<-50 #last page of results - we guess at this, it's usually under 200
 lastpage<-maxpage
 for (thispage in seq(maxpage,1,-1)){  #count down so know when to stop
 print(thispage)
@@ -73,7 +91,7 @@ if(length(artlist)<3){lastpage<-lastpage-1}
 if(length(artlist)>2){ #blank issues ignored
 
 
-#The journal TOC does include special issues, but we need to find how they are flagged - it does show up on the page that lists titles
+#The journal TOC does include special issues
 #We then need the article number, 
 
 artn<-myart %>%
@@ -92,21 +110,21 @@ for (a in 1:length(artIDs)){
   artdf[thisrow,]<-NA
   artname<-paste0("https://www.hindawi.com/journals/",myshortname,"/",myyear,"/",artIDs[a]) 
 
-
-  
   mydetails <- read_html(artname)
+  
   # #li gives reference list!  body as node gives whole article
-  # mydetail <- mydetails %>%
-  #   html_nodes("head") %>%
-  #   html_text()
-  # mydetail
+  # mybody <- mydetails %>%
+  #    html_nodes("body") %>% #full article
+  #    html_text()
+  # g<-unlist(gregexpr("Data Availability",mybody))
+  # myda<-substr(mybody, (g[6]+49),(g[6]+169)) #for data availability statement
 
   mydetail<-mydetails %>%
    html_elements(".articleHeader")%>%       
       html_text()
 mydetail
 #V close to what we need - only problem is no gap between authors and title. Has dates and academic editor!
-#Dates of publication etc - can strip of in reverse
+#Dates of publication etc - can strip off in reverse
 mypub<-NA
   publoc<-unlist(gregexpr('Published', mydetail))
   if (publoc>0){
@@ -205,8 +223,10 @@ artdf$affiliation[thisrow]<-myemail
 nuname<-paste0('Hindawi_results/H_articles_',myyear,'_',myshortname,'_',lastpage,'p.csv' )
 write.csv(artdf,here(nuname),row.names=F)
 }
+}
 ```
 
+Next we scrape in the information on special issues for the 10 journals we are focussing on.
 
 ```{r readspecissues}
 jlist<-read.csv('smut_journals.csv')$shortname[1:10]
@@ -219,46 +239,52 @@ colnames(sidf)<-c('Jabbrev','apc','SI','SI_DOI','ed1','ed1affil','ed1email',
 thisrow<-0
 
 for (j in 1:10){
-
-jsiname <-paste0("https://www.hindawi.com/journals/",jlist[j],"/psi/")
-  mydetails <- read_html(jsiname)
-  
-  mydetail<-mydetails %>%
-   html_elements("body")%>%       
+  #may be several pages of SI stuff!
+  maxpage<-10
+  for (thispage in 1:maxpage){
+    
+    jsiname <-paste0("https://www.hindawi.com/journals/",jlist[j],"/psi/page/",thispage)
+    print(jsiname)
+    mydetails <- read_html(jsiname)
+    
+    mydetail<-mydetails %>%
+      html_elements("body")%>%       
       html_text()
-mydetail
-
-aloc<-unlist(gregexpr('APC',mydetail))[1]
-apc<-substr(mydetail,(aloc+4),(aloc+7))
-x<-unlist(str_split(mydetail,"title"))
-x1<-x[75:length(x)] #first 74 entries are boilerplate
-
-for (n in 1:length(x1)){
-  titleloc<-4 #the word 'title' has been removed, so title starts at 4th char
-  openloc<-unlist(gregexpr('open', x1[n]))
-  nameloc<-unlist(gregexpr('name', x1[n]))
-  suploc<-unlist(gregexpr('sup', x1[n]))
-  emailloc<-unlist(gregexpr('email', x1[n]))
-   aliasloc<-unlist(gregexpr('alias', x1[n]))
-    articlesloc<-unlist(gregexpr('articles', x1[n]))
-  
-  thisrow<-thisrow+1
-  sidf[thisrow,]<-NA #initialise
-  sidf$Jabbrev[thisrow]<-jlist[j]
-  sidf$SI[thisrow]<-substr(x1[n], titleloc,(openloc-4))
-  sidf$SI_DOI[thisrow]<-substr(x1[n], (aliasloc+9),(articlesloc-4))
-  sidf$ed1[thisrow]<-substr(x1[n], (nameloc[1]+7),(emailloc[1]-4))
-  sidf$ed2[thisrow]<-substr(x1[n], (nameloc[2]+7),(emailloc[2]-4))
-  sidf$ed3[thisrow]<-substr(x1[n], (nameloc[3]+7),(emailloc[3]-4))
-  sidf$ed1email[thisrow]<-substr(x1[n], (emailloc[1]+8),(suploc[1]-4))
-  sidf$ed2email[thisrow]<-substr(x1[n], (emailloc[2]+8),(suploc[2]-4))
-  sidf$ed3email[thisrow]<-substr(x1[n], (emailloc[3]+8),(suploc[3]-4))
-  sidf$apc[thisrow]<-apc
-  
+    mydetail
+    
+      aloc<-unlist(gregexpr('APC',mydetail))[1]
+      apc<-substr(mydetail,(aloc+4),(aloc+7))
+      x<-unlist(str_split(mydetail,"title"))
+      if(length(x)>74){ #blank pages ignored
+      x1<-x[75:length(x)] #first 74 entries are boilerplate
+      
+      for (n in 1:length(x1)){
+        titleloc<-4 #the word 'title' has been removed, so title starts at 4th char
+        openloc<-unlist(gregexpr('open', x1[n]))
+        nameloc<-unlist(gregexpr('name', x1[n]))
+        suploc<-unlist(gregexpr('sup', x1[n]))
+        emailloc<-unlist(gregexpr('email', x1[n]))
+        aliasloc<-unlist(gregexpr('alias', x1[n]))
+        articlesloc<-unlist(gregexpr('articles', x1[n]))
+        
+        thisrow<-thisrow+1
+        sidf[thisrow,]<-NA #initialise
+        sidf$Jabbrev[thisrow]<-jlist[j]
+        sidf$SI[thisrow]<-substr(x1[n], titleloc,(openloc-4))
+        sidf$SI_DOI[thisrow]<-substr(x1[n], (aliasloc+9),(articlesloc-4))
+        sidf$ed1[thisrow]<-substr(x1[n], (nameloc[1]+7),(emailloc[1]-4))
+        sidf$ed2[thisrow]<-substr(x1[n], (nameloc[2]+7),(emailloc[2]-4))
+        sidf$ed3[thisrow]<-substr(x1[n], (nameloc[3]+7),(emailloc[3]-4))
+        sidf$ed1email[thisrow]<-substr(x1[n], (emailloc[1]+8),(suploc[1]-4))
+        sidf$ed2email[thisrow]<-substr(x1[n], (emailloc[2]+8),(suploc[2]-4))
+        sidf$ed3email[thisrow]<-substr(x1[n], (emailloc[3]+8),(suploc[3]-4))
+        sidf$apc[thisrow]<-apc
+        
+      }
+      
+    }
+  }
 }
-
-}
-
 write.csv(sidf,'SI_list.csv',row.names=F)
 
 ```

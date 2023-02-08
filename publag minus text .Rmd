@@ -1,0 +1,552 @@
+---
+title: 'Publication mills analysis'
+author: "Dorothy Bishop"
+date: '2023-02-06'
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(tidyverse)
+require(here)
+require(TSDT) #for unfactor function
+require(cowplot)
+require(PupillometryR) #bizarrely seems needed for making rainclouds
+require(stringr)
+require(rvest) #for scraping
+require(ggpubr) #organise plots
+
+
+#NB to find rows with a given string such as "Kao"
+#f<-filter(mydf, grepl("Kao",authors))
+
+```
+
+```{r numformat,echo=F}
+#Format numbers so they have same n decimal places, even if zero at end
+#This returns a string
+
+numformat=function(mynum,ndecimals){
+  newnum <- format(round(mynum,ndecimals),nsmall=ndecimals)
+  return(newnum)
+}
+```
+
+Read in giant file created from webscraping, with all 28 journals that were scraped.
+Add columns denoting email domains and countries. 
+
+Now updated to allHindawi2022.csv.  This has all journals, but I have deleted entries for 2023 (these were only available for the original journals).
+
+NB PubPeer information is commercially sensitive and is excluded from the file deposited on OSF. 
+
+```{r readfile,include=FALSE}
+
+mydf<-read.csv(here('AllHindawi2022.csv'))
+
+```
+
+```{r jcodenames}
+
+#add abbreviated j names
+hj<-read.csv('hjournals.csv')
+names(mydf)[1]<-'jabbrev' #reuse this column
+
+
+for (h in 1:nrow(hj)){
+w<-which(mydf$Journal==hj$name[h])
+hj$Npaper[h]<-length(w)
+if(length(w)>0){
+  mydf$jabbrev[w]<-hj$shortname[h]
+}
+}
+
+#Find N special issues
+SIall<-data.frame(table(mydf$SI))
+#add abbreviation
+SIall$jabbrev<-NA
+for (s in 3:nrow(SIall)){ #ignore blank and zero
+  w<-which(mydf$SI==SIall$Var1[s])
+  SIall$jabbrev[s]<-mydf$jabbrev[w[1]]
+}
+#has abbrev with the SI
+#Now want to number the SIs by journal
+#First order the DF
+#If we also order by N paper (Freq) then we can use same names for all and for selected (with at least 25 articles), because the ones we want will be at top of the list
+
+SIall<-SIall[
+  with(SIall, order(jabbrev, -Freq)),
+]
+
+
+mynums<-as.character(1:120)  #I think only one journal exceeds 99 so keep most to 2 digits
+#This numbering applies to all special issues, even if only one article.
+
+mynums[1:9]<-paste0(0,mynums[1:9])
+
+SIall$shortSI<-0
+SIall$shortSI[1]<-paste0(SIall$jabbrev[1],'_',mynums[1])
+snum<-1
+for (s in 2:(nrow(SIall)-2)){
+  snum<-snum+1
+  if(SIall$jabbrev[s] != SIall$jabbrev[(s-1)])
+  {snum<-1}
+  SIall$shortSI[s]<-paste0(SIall$jabbrev[s],'_',mynums[snum])
+  
+}
+names(SIall)[1]<-'Special.Issue'
+write.csv(SIall,'SIall.csv',row.names=F)
+
+
+SIselected<-SIall[SIall$Freq>29,] #at least 30 articles in special issue
+
+SIselected$shortSI<-0
+SIselected$shortSI[1]<-paste0(SIselected$jabbrev[1],'_',mynums[1])
+snum<-1
+for (s in 2:(nrow(SIselected)-2)){
+  snum<-snum+1
+  if(SIselected$jabbrev[s] != SIselected$jabbrev[(s-1)])
+  {snum<-1}
+  SIselected$shortSI[s]<-paste0(SIselected$jabbrev[s],'_',mynums[snum])
+  
+}
+
+SIselected$Var1<-unfactor(SIselected$Var1)
+colnames(SIselected)[1]<-'Special.Issue'
+
+#remove blank entries
+w<-which(SIselected$shortSI==0)
+SIselected<-SIselected[-w,]
+
+#add codes for regular issues - do this by adding a new block , finding those with _01 ending and modifying to _Reg
+w<-unlist(gregexpr('_01',SIselected$shortSI ))
+addbit<-SIselected[w>0,]
+addbit$shortSI<-str_replace(addbit$shortSI,'01','Reg')
+addbit$Special.Issue<-0
+addbit$Freq<-NA
+
+SIselected<-rbind(SIselected,addbit)
+write.csv(SIselected,'SIselected.csv',row.names=F)
+
+
+
+
+
+
+
+```
+
+Those with .xx, where xx is country code are designated as 'academic email', though this may not be true in all cases if burner emails were used. But broad distinction drawn between those with a country code or .edu, vs those such as gmail or 123 domains. This is not analysed in the writeup, though email domain is used to obtain a diversity measure.
+
+```{r emailbits}
+#add email domain columns
+mydf$edomain<-NA
+mydf$ecountry<-NA
+mydf$academail<-1
+for (r in 1:nrow(mydf)){
+mydf$edomain[r]<-unlist(str_split(mydf$affiliation[r],"@"))[2]
+mydf$ecountry[r]<-str_sub(mydf$edomain[r],-3,-1)
+
+}
+w<-which(mydf$ecountry %in% c('cat','com','eus','krd','net','nfo','org','sia'))
+mydf$academail[w]<-0
+
+mydf$china<-0
+mydf$china[mydf$ecountry=='.cn']<-1
+```
+Match up any retractions to their originals. Note that since we only look at 2022, it is possible some retractions are unmatched, if the original article was earlier than 2022.
+
+```{r retractions,include=FALSE}
+#retractions
+mydf$retracted<-NA
+matches<-unlist(gregexpr('Retracted:', mydf$title))
+w<-which(matches> -1) #row number of those with 'Retracted:'
+if(length(w)>0){
+mydf$retracted[w]<- 0 #flag retraction with 0 (identifies retraction even if not matched)
+#Can we match it with an earlier paper? (may not, if it was in previous year)
+
+  for (r in 1:length(w)){
+    
+    trunctitle<-substring(mydf$title[w[r]],12,nchar(mydf$title[w[r]])) #title without "Retraction:"
+    ww<-which(mydf$title==trunctitle)
+    if(length(ww)>0){
+      mydf$retracted[ww]<-w[r]
+      mydf$retracted[w[r]]<-(-ww) #neg row number corresponding to the retracted if we have a match
+    }
+  }
+}
+write.csv(mydf,here('Hindawi_2022_2023_with_pubpeer_email_ret.csv'))
+
+#check which journals have retractions
+w1<-which(mydf$retracted<0)
+truncdf<-mydf[w1,] #only retracted notices
+
+table(truncdf$Journal)
+
+w2<-which(mydf$retracted>-1) #actual retractions in 2022
+truncdf2<-mydf[w2,] #only retractions
+
+t<-table(truncdf2$Journal)
+
+
+
+```
+
+Create column for Editor RT, which is either date of revision minus date received, or, if no revision, is date accepted minus date received.  
+
+```{r publicationlag,include=FALSE}
+#NB if re-reading a file that is already processed, this won't work!
+
+#convert to R date format
+#NB if it was opened in xls then format may have changed! Need to check
+datecol<-which(colnames(mydf)=='received')
+daterange<-datecol:(datecol+3)
+#date format as varies by journal! 
+#need to preprocess
+
+
+#convert space to hyphen
+for (d in daterange){
+mydf[,d]<-gsub(" ","-",mydf[,d])  
+mydf[,d]<-gsub("-20","-",mydf[,d]) 
+mydf[,d]<-gsub("Sept","Sep",mydf[,d]) 
+}
+
+
+  dateformat<-'%d-%b-%y' #all should now be in this format
+  for (d in daterange){
+  mydf[,d]<-as.Date(mydf[,d],dateformat)
+  }
+
+mydf$days_rec_rev<-as.numeric(mydf$revised-mydf$received)
+mydf$days_rec_acc<-as.numeric(mydf$accepted-mydf$received)
+
+#For ones with wrong date format, lag will be a large negative number
+#For retractions, lag is zero
+
+mydf$daysresp<-mydf$days_rec_acc
+w<-which(!is.na(mydf$days_rec_rev))
+mydf$daysresp[w]<-mydf$days_rec_rev[w]
+w1<-which(mydf$days_rec_acc<0) #cases where accepted date not recorded
+
+
+```
+
+
+Process the editors to deal with issues with case and punctuation. 
+```{r tabulate_editors,include=FALSE}
+#First just ensure all editor names are in title case (otherwise get duplicates with different cases)
+mydf$editor<-str_to_title(mydf$editor)
+#remove stops from author names
+mydf$editor<-gsub(".","",mydf$editor,fixed=TRUE)   #fixed needed or else . treated as wildcard
+```
+
+The .csv file Smut_journals is based on Clyde/Zhang spreadsheet, which was accessed on 27 Jan 2023 via
+https://forbetterscience.com/2022/09/05/cyclotron-branch-before-the-fall/  
+from this address:  
+https://docs.google.com/spreadsheets/d/1YL5rMrZoUcp3rn1mP7B_X9QE08VPGXehhK-dlkFN_Iw/edit#gid=0
+
+I sorted the records to select the 10 journals with the most pubpeer comments, which are the focus of the paper. 
+
+
+
+
+
+```{r quantiles, include=F}
+#find cutoff for lowest 2% for Editor RT for regular articles.
+#Do this for regular articles in 10 focus journals
+sjournals<-read.csv('Smut_Journals.csv')
+# lowcut2 for 2%
+
+ssjournals<-sjournals[1:10,]
+
+sjournals$medlag<-NA
+sjournals$lowcut2<-NA
+
+
+for (j in 1:10){
+  jdf<-filter(mydf,Journal==ssjournals$title[j],SI==0) #exclude special issues
+  sjournals$medlag[j]<-median(jdf$daysresp,na.rm=T)
+  sjournals$lowcut2[j]<-quantile(jdf$daysresp,.02,na.rm=T)
+}
+
+write.csv(sjournals,'Smut_journals.csv',row.names=F)
+
+#Do same computation for all 10 journals together
+  jdf<-filter(mydf,Journal %in% ssjournals$title[1:10],SI==0) #exclude special issues
+  med10<-median(jdf$daysresp,na.rm=T)
+  quant2.10<-quantile(jdf$daysresp,.02,na.rm=T)
+  
+#Repeat for all journals in database
+  jdf<-filter(mydf,SI==0) #exclude special issues
+  med.all<-median(jdf$daysresp,na.rm=T)
+  quant2.all<-quantile(jdf$daysresp,.02,na.rm=T)
+  
+
+```
+
+Raincloud figures will show Editor RT for special issues and regular articles for each of 10 journals
+```{r rainclouds,include=FALSE}
+#dir.create(here('figs'))
+
+#add SI abbreviated names to mydf
+mydf$SIabbrev<-NA
+SInames<-read.csv('SIselected.csv')
+
+w<-which(SInames$Special.Issue==0) #need to treat regular issues separately
+for(x in w){
+  y<-intersect(which(mydf$SI==0),which(mydf$jabbrev==SInames$jabbrev[x]))
+  mydf$SIabbrev[y]<-SInames$shortSI[x]
+}
+#Regular issues are listed at end of SI names; we ignore these when allocating SI codes
+
+for (ss in 1:(w-1)){
+
+  w<-which(mydf$SI==trimws(SInames$Special.Issue[ss])) #trimws removes leading/trailing white space
+  if(length(w)>0){
+    mydf$SIabbrev[w]<-SInames$shortSI[ss]
+  }
+
+}
+
+
+cutoff=quant2.10 #for these journals, this is 2nd percentile for regular articles
+#quant2 is same for these 10 or for all journals, 22 days.
+specials<-read.csv('SIselected.csv') #selected SIs with 30 or more articles
+
+
+for (j in 1:10){
+
+  myd<-filter(mydf,Journal==ssjournals$title[j])
+  thisj<-ssjournals$abbrev[j]#My abbreviation of journal title for the figure
+
+  w<-which(specials$jabbrev==ssjournals$shortname[j])
+  usesi<-specials$shortSI[w]
+  
+  myd2<-myd[myd$SIabbrev %in% usesi,]
+
+
+myd2$days_trunc<-myd2$daysresp
+w<-which(myd2$days_trunc>140)
+myd2$days_trunc[w]<-140
+myd2<-myd2[myd2$days_trunc>0,] #removed negatives and retractions
+w<-which(is.na(myd2$SIabbrev))
+if(length(w)>0){
+  myd2<-myd2[-w,]}
+
+
+
+#Basic plot
+jtitle<-thisj
+
+p<-ggplot(myd2,aes(x=SIabbrev,y=days_trunc, fill = SIabbrev, colour = SIabbrev))+
+geom_flat_violin(position = position_nudge(x = .25, y = 0),adjust =2)+
+geom_point(position = position_jitter(width = .15), size = .25)+
+ ylab('Days')+xlab('')+coord_flip()+guides(fill = "none", colour = "none") +
+ggtitle(jtitle)+
+  #geom_hline(yintercept=sjournals$lowcut2[j],linetype='dashed')
+  geom_hline(yintercept=cutoff,linetype='dashed') #use overall 2% cutoff
+savename<- paste0('figs/',thisj,'.jpg')
+
+#NB with cowplot theme it is crisper but it has black background with jpg!
+
+ggsave(savename)
+#(should be able to change plot name dynamically but here it is done v clunkily!
+if(j==1){p1<-p}
+if(j==2){p2<-p}
+if(j==3){p3<-p}
+if(j==4){p4<-p}
+if(j==5){p5<-p}
+if(j==6){p6<-p}
+if(j==7){p7<-p}
+if(j==8){p8<-p}
+if(j==9){p9<-p}
+if(j==10){p10<-p}
+
+}
+  for (b in 1:5){
+    if(b==1){
+      ggarrange(p1,p2,
+                        ncol = 2, nrow = 1)
+         savename<- paste0('figs/bigplot1')
+    }
+    if(b==2){
+      ggarrange(p3,p4,
+                        ncol = 2, nrow = 1)
+         savename<- paste0('figs/bigplot2')
+    }
+    if(b==3){
+      ggarrange(p10,p6,
+                        ncol = 2, nrow = 1)
+         savename<- paste0('figs/bigplot3')
+    }
+    if(b==4){
+     ggarrange(p7,p8,
+                        ncol = 2, nrow = 1)
+         savename<- paste0('figs/bigplot4')
+    }
+    if(b==5){
+      ggarrange(p9,p5,
+                        ncol = 2, nrow = 1)
+         savename<- paste0('figs/bigplot5')
+      
+    }
+      ggsave(paste0(savename,'.eps'))
+      ggsave(paste0(savename,'.jpg'))
+
+    
+  }
+```
+
+
+```{r editorscrutiny, include=F}
+#create list with just one row for each of the editors. 
+#Also of interest to see the email domains of authors
+
+#look at editors from SI papers across journals.
+
+
+#for (myloop in 1:2){ #first loop for regular papers, 2nd for spec issues
+  
+#dfe<-filter(mydf,Journal %in% jlist) #dfe restricts to the 10 journals in focus here
+
+#if(myloop==1){dfe<-filter(mydf,SI==0)} #regular papers, not special issues
+#if(myloop==2){dfe<-filter(mydf,SI!=0)} #special issues
+dfe<-mydf
+etab<-data.frame(table(mydf$editor))
+etab<-etab[etab$Freq>9,] #editors who handled at least 10 papers
+etab<-etab[-1,] #row 1 is blank, remove it
+colnames(etab)<-c('Editor','Npapers')
+
+
+cutoff<-quant2.all #average lower cutoff for 2nd percentile for the 10 journals
+
+etab$medianlag<-NA
+etab$pbelowcut<-NA
+for (e in 1:nrow(etab)){
+  w<-which(dfe$editor==etab$Editor[e])
+  etab$medianlag[e]<-median(dfe$daysresp[w],na.rm=T)
+  etab$pbelowcut[e]<-length(which(dfe$daysresp[w]<cutoff))/length(w)
+  
+}
+
+#etab<-etab[order(-etab$pbelowcut),]
+
+etabSI<-NA
+etab$NSI<-NA #No of special issues (either within same or different journals; will be counted even if no abbrev code)
+etab$PubPeer<-NA
+etab$retracted<-NA
+etab$academail<-NA
+etab$jabbrev<-NA
+etab$sampleID <-NA#allows us to quickly check website
+etab$diversity<-NA
+etab$pnorev<-NA
+#How many special issues is editor involved in
+for (e in 1:nrow(etab)){
+  f<-filter(dfe,editor==etab$Editor[e])
+  sp<-unique(f$SI)
+
+  w<-which(sp=='0')
+  if(length(w)>0){sp<-sp[-w]}
+  etab$NSI[e]<-length(sp) #NB some of these may not have SIabbrev codes if they don't have many articles. And 0 will be counted as one code here.
+
+  etab$PubPeer[e]<-length(unique(f$pubpeer_link))-1
+  etab$retracted[e]<-length(which(!is.na(f$retracted)))
+  etab$academail[e]<-sum(f$academail)
+  
+  etab$sampleID[e]<-f$ID[1] #just an article selected in case we want to check things
+
+
+  mysibit<-unique(f$SIabbrev)
+  mysibit<-mysibit[!is.na(mysibit)]
+  etab$jabbrev[e]<-paste0(c(mysibit),collapse=' + ') #list all SI with codes
+
+  u<-unique(f$edomain)
+  etab$diversity[e]<-length(u)/nrow(f)
+  norev<-length(which(is.na(f$revised)))
+  etab$pnorev[e]<-norev/nrow(f)
+  
+
+  
+}
+#if (myloop==1){rtab<-etab}
+#}
+# etab<-etab[order(-etab$Npaper),]
+# rtab<-rtab[order(-rtab$Npaper),]
+ etab$SI<-1
+ w<-which(etab$NSI==0)
+ etab$SI[w]<-0
+# rtab$SI<-0
+# etab<-rbind(rtab,etab)
+  
+  
+  
+#add PubPeer, Retractions and Acad emails as proportions
+etab$p.pp<-etab$PubPeer/etab$Npapers
+etab$p.ret<-etab$retracted/etab$Npapers
+etab$p.acad<-etab$academail/etab$Npapers
+
+row.names(etab)<-1:nrow(etab)
+
+write.csv(etab,'etab.csv',row.names=F)
+
+
+etab$PP<-0
+etab$PP[etab$PubPeer>0]<-1
+etab$ret<-0
+etab$ret[etab$retracted>0]<-1
+
+
+etab$gp4<-etab$SI*10+etab$PP
+
+w<-which(etab$gp4==1)
+etab2<-etab[-w,] #for plots remove group Reg PP+
+
+etab2$EdClass<-as.factor(etab2$gp4)
+levels(etab2$EdClass)<-c('Reg_PP-','SI_PP-','SI_PP+')
+etab2$Npapercens<-etab2$Npapers
+etab2$Npapercens[etab2$Npapers>200]<-200
+
+#make ggplot boxplots
+q1<-ggplot(etab2,aes(x=EdClass,y=Npapercens))+
+  geom_boxplot()+
+    labs(title="",x="Editor type", y = "N papers (censored at 200)")
+
+
+q2<-ggplot(etab2,aes(x=EdClass,y=NSI))+
+  geom_boxplot()+
+    labs(title="",x="Editor type", y = "N special issues")
+
+
+q3<-ggplot(etab2,aes(x=EdClass,y=medianlag))+
+  geom_boxplot()+
+  labs(title="",x="Editor type", y = "Median Editor RT")
+
+q4<-ggplot(etab2,aes(x=EdClass,y=diversity))+
+  geom_boxplot()+
+labs(title="",x="Editor type", y = "Author Email Diversity")
+
+q5<-ggplot(etab2,aes(x=EdClass,y=pnorev))+
+  geom_boxplot()+
+   labs(title="",x="Editor type", y = "Proportion with no revision")
+
+ allplot<-  ggarrange(q1+xlab(NULL),q3+xlab(NULL),q4,q5, 
+                      labels = c("A", "B", "C","D"),
+                        ncol = 2, nrow = 2)
+  
+      
+  ggsave('figs/allplot.jpg')  
+
+
+keepcols<-c("Editor","Npapers","jabbrev"  , "NSI" , "medianlag", "pbelowcut" ,"diversity", "pnorev",    "p.pp" ,     "p.ret" ,"SI" )  
+shortetab<-etab[,keepcols]
+shortetab<-shortetab[order(-shortetab$Npapers),]
+
+
+write.csv(shortetab,'Editor_table.csv',row.names=F)
+
+
+
+```
+
