@@ -45,6 +45,12 @@ NB PubPeer information is commercially sensitive and is excluded from the file d
 
 mydf<-read.csv(here('AllHindawi2022.csv'))
 
+#mydf<-read.csv(here('Hindawi_2022_2023_with_pubpeer_email_ret.csv'))
+dateformat<- "%Y-%m-%d"
+mydf$received<-as.Date(mydf$received,dateformat)
+mydf$revised<-as.Date(mydf$revised,dateformat)
+mydf$accepted<-as.Date(mydf$accepted,dateformat)
+mydf$published<-as.Date(mydf$published,dateformat)
 ```
 
 ```{r jcodenames}
@@ -197,7 +203,8 @@ Create column for Editor RT, which is either date of revision minus date receive
 
 ```{r publicationlag,include=FALSE}
 #NB if re-reading a file that is already processed, this won't work!
-
+oldformat<-0
+if(oldformat==1){ #this is retained just for historic reasons - dates are already converted 
 #convert to R date format
 #NB if it was opened in xls then format may have changed! Need to check
 datecol<-which(colnames(mydf)=='received')
@@ -218,7 +225,7 @@ mydf[,d]<-gsub("Sept","Sep",mydf[,d])
   for (d in daterange){
   mydf[,d]<-as.Date(mydf[,d],dateformat)
   }
-
+}
 mydf$days_rec_rev<-as.numeric(mydf$revised-mydf$received)
 mydf$days_rec_acc<-as.numeric(mydf$accepted-mydf$received)
 
